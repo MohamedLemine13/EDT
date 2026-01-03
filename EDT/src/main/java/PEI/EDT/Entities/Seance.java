@@ -21,7 +21,7 @@ public class Seance {
 
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 5)
+    @Column(nullable = false, length = 20)
     private TypeSeance type;
 
     @Enumerated(EnumType.STRING)
@@ -36,13 +36,17 @@ public class Seance {
     @JoinColumn(name = "matiere_code", nullable = false)
     private Matiere matiere;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "salle_id", nullable = false)
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "salle_id", nullable = true)
     private Salle salle;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "semaine_id", nullable = false)
     private SemaineAcademique semaineAcademique;
+
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "professeur_id", nullable = true)
+    private Professeur professeur;
 
     @OneToMany(mappedBy = "seance", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

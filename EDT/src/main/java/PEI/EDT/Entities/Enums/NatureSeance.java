@@ -1,6 +1,6 @@
 package PEI.EDT.Entities.Enums;
 
-public enum TypeSeance {
+public enum NatureSeance {
     CM,
     TD,
     TP,

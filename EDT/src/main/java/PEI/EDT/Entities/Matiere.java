@@ -11,7 +11,7 @@ import java.util.List;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Matiere {
+public class    Matiere {
 
     @Id
     @Column(length = 50)

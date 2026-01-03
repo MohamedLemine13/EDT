@@ -10,10 +10,6 @@ import java.util.List;
 
 public interface SeanceRepository extends JpaRepository<Seance, Integer> {
 
-    /**
-     * Get all seances of a given departement for a given semestre and semaine.
-     * This is the core query for "Afficher l'EDT".
-     */
     @Query("""
         select distinct s
         from Seance s
@@ -29,10 +25,6 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
             @Param("semaineId") Integer semaineId
     );
 
-    /**
-     * Same as above but fetches associated objects to avoid LazyInitializationException
-     * when you map to DTO outside transaction.
-     */
     @EntityGraph(attributePaths = {"creneau", "matiere", "salle", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
     @Query("""
         select distinct s
@@ -47,4 +39,50 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
             @Param("semestreId") Integer semestreId,
             @Param("semaineId") Integer semaineId
     );
+
+    // ✅ Collision checks (create)
+    boolean existsBySalle_IdAndCreneau_IdAndSemaineAcademique_Id(
+            Integer salleId,
+            Integer creneauId,
+            Integer semaineId
+    );
+
+    boolean existsBySeanceDepartements_Departement_IdAndCreneau_IdAndSemaineAcademique_Id(
+            Integer departementId,
+            Integer creneauId,
+            Integer semaineId
+    );
+
+    // ✅ Collision checks (update: exclude current seance)
+    boolean existsBySalle_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+            Integer salleId,
+            Integer creneauId,
+            Integer semaineId,
+            Integer excludeSeanceId
+    );
+
+    boolean existsBySeanceDepartements_Departement_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+            Integer departementId,
+            Integer creneauId,
+            Integer semaineId,
+            Integer excludeSeanceId
+    );
+
+    boolean existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_Id(
+            Integer professeurId,
+            Integer creneauId,
+            Integer semaineId
+    );
+
+    boolean existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+            Integer professeurId,
+            Integer creneauId,
+            Integer semaineId,
+            Integer excludeSeanceId
+    );
+
+
+    // ✅ For professeur collision: load seances of same slot with joins
+    @EntityGraph(attributePaths = {"creneau", "matiere", "salle", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
+    List<Seance> findByCreneau_IdAndSemaineAcademique_Id(Integer creneauId, Integer semaineId);
 }

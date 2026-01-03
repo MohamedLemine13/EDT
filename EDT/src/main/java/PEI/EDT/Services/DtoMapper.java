@@ -26,11 +26,11 @@ public final class DtoMapper {
                 .heureFin(s.getCreneau().getHeureFin())
                 .typeCreneau(s.getCreneau().getTypeCreneau().name())
 
-                .matiereCode(s.getMatiere().getCode())
+                .matiereCode(s.getMatiere() == null ? null : s.getMatiere().getCode())
 
-                .salleId(s.getSalle().getId())
-                .salleNom(s.getSalle().getNom())
-                .typeSalle(s.getSalle().getTypeSalle().name())
+                .salleId(s.getSalle() == null ? null : s.getSalle().getId())
+                .salleNom(s.getSalle() == null ? null : s.getSalle().getNom())
+                .typeSalle(s.getSalle() == null ? null : s.getSalle().getTypeSalle().name())
 
                 .semaineId(s.getSemaineAcademique().getId())
                 .numeroSemaine(s.getSemaineAcademique().getNumeroSemaine())

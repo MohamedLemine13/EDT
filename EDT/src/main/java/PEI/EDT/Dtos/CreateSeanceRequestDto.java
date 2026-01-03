@@ -18,6 +18,8 @@ public class CreateSeanceRequestDto {
     private String matiereCode;
     private Integer salleId;
     private Integer semaineId;
+    private Integer professeurId; // optional for DEVOIR/EXAMEN/MEETING/AUTRE
+
 
     // One or more departements (DEP vs HE/ST)
     private List<Integer> departementIds;

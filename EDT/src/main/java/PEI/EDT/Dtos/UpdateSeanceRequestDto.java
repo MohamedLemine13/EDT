@@ -17,6 +17,8 @@ public class UpdateSeanceRequestDto {
     private String matiereCode;
     private Integer salleId;
     private Integer semaineId;
+    private Integer professeurId; // optional
+
 
     // If not null, replace the list of departments
     private List<Integer> departementIds;
