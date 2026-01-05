@@ -20,6 +20,18 @@ public class    Matiere {
     @Column(nullable = false)
     private String intitule;
 
+    @Column(nullable = false)
+    private Integer credits;
+
+    @Column(nullable = false)
+    private Integer hCm;
+
+    @Column(nullable = false)
+    private Integer hTd;
+
+    @Column(nullable = false)
+    private Integer hTp;
+
     @OneToMany(mappedBy = "matiere", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AffectationEnseignement> affectations = new ArrayList<>();

@@ -19,6 +19,8 @@ public class UpdateSeanceRequestDto {
     private Integer semaineId;
     private Integer professeurId; // optional
 
+    // ✅ NEW: commun vs dep (null means "infer from creneau")
+    private Boolean isCommun;
 
     // If not null, replace the list of departments
     private List<Integer> departementIds;

@@ -16,23 +16,43 @@ public class SalleController {
 
     private final SalleService salleService;
 
+    /**
+     * Create a salle.
+     *
+     * Examples:
+     * - AMPHI (school-level / common):
+     *   POST /api/salles
+     *   { "nom":"AMPHI ESP", "typeSalle":"AMPHI", "ecoleId":"ESP" }
+     *
+     * - Normal room (department-level):
+     *   POST /api/salles
+     *   { "nom":"Salle 104", "typeSalle":"SALLE", "departementId":1 }
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SalleDto create(@RequestBody CreateSalleDto dto) {
         return salleService.create(dto);
     }
 
+    /**
+     * List salles with optional filters:
+     * - GET /api/salles                      -> all salles
+     * - GET /api/salles?departementId=1      -> salles of one department
+     * - GET /api/salles?ecoleId=ESP          -> salles of one school (includes AMPHI)
+     *
+     * Priority (if both provided): departementId wins.
+     */
+    @GetMapping
+    public List<SalleDto> list(
+            @RequestParam(required = false) Integer departementId,
+            @RequestParam(required = false) String ecoleId
+    ) {
+        return salleService.list(departementId, ecoleId);
+    }
+
     @GetMapping("/{id}")
     public SalleDto getById(@PathVariable Integer id) {
         return salleService.getById(id);
-    }
-
-    /**
-     * Optional filter: GET /api/salles?departementId=1
-     */
-    @GetMapping
-    public List<SalleDto> list(@RequestParam(required = false) Integer departementId) {
-        return salleService.list(departementId);
     }
 
     @PutMapping("/{id}")

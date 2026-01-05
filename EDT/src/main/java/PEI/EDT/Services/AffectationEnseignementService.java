@@ -38,21 +38,38 @@ public class AffectationEnseignementService {
     public AffectationEnseignementDto upsert(CreateAffectationEnseignementDto dto) {
 
         if (dto.getSemestreId() == null
-                || dto.getDepartementId() == null
                 || dto.getMatiereCode() == null
                 || dto.getType() == null
                 || dto.getProfesseurId() == null
                 || dto.getSalleId() == null) {
-            throw new BadRequestException("semestreId, departementId, matiereCode, type, professeurId, salleId are required.");
+            throw new BadRequestException("semestreId, matiereCode, type, professeurId, salleId are required.");
         }
+
+        boolean isCommun = Boolean.TRUE.equals(dto.getIsCommun());
+
+// departementId rule depends on isCommun
+        if (isCommun) {
+            if (dto.getDepartementId() != null) {
+                throw new BadRequestException("When isCommun=true, departementId must be null.");
+            }
+        } else {
+            if (dto.getDepartementId() == null) {
+                throw new BadRequestException("When isCommun=false (or missing), departementId is required.");
+            }
+        }
+
 
         TypeSeance type = parseTypeSeance(dto.getType());
 
         Semestre semestre = semestreRepo.findById(dto.getSemestreId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semestre not found: " + dto.getSemestreId()));
 
-        Departement departement = departementRepo.findById(dto.getDepartementId())
-                .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + dto.getDepartementId()));
+        Departement departement = null;
+        if (!isCommun) {
+            departement = departementRepo.findById(dto.getDepartementId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + dto.getDepartementId()));
+        }
+
 
         Matiere matiere = matiereRepo.findById(dto.getMatiereCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Matiere not found: " + dto.getMatiereCode()));
@@ -63,26 +80,47 @@ public class AffectationEnseignementService {
         Salle salle = salleRepo.findById(dto.getSalleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Salle not found: " + dto.getSalleId()));
 
-        // ✅ Recommended consistency: salle must belong to the same department
-        if (salle.getDepartement() == null || salle.getDepartement().getId() == null) {
-            throw new BadRequestException("Salle must be attached to a Departement.");
-        }
-        if (!salle.getDepartement().getId().equals(departement.getId())) {
-            throw new BadRequestException("Salle must belong to the same Departement as the affectation.");
+        if (isCommun) {
+            // Commun affectation => salle should be AMPHI (department-less)
+            if (salle.getDepartement() != null) {
+                throw new BadRequestException("When isCommun=true, salle must be common (departement must be null). Use an AMPHI salle.");
+            }
+        } else {
+            // Department affectation => salle must belong to same department
+            if (salle.getDepartement() == null || salle.getDepartement().getId() == null) {
+                throw new BadRequestException("Salle must be attached to a Departement.");
+            }
+            if (!salle.getDepartement().getId().equals(departement.getId())) {
+                throw new BadRequestException("Salle must belong to the same Departement as the affectation.");
+            }
         }
 
-        AffectationEnseignement affectation = affectationRepo
-                .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
-                        semestre.getId(), departement.getId(), matiere.getCode(), type
-                )
-                .orElseGet(AffectationEnseignement::new);
+
+        AffectationEnseignement affectation;
+
+        if (isCommun) {
+            affectation = affectationRepo
+                    .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+                            semestre.getId(), matiere.getCode(), type
+                    )
+                    .orElseGet(AffectationEnseignement::new);
+        } else {
+            affectation = affectationRepo
+                    .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
+                            semestre.getId(), departement.getId(), matiere.getCode(), type
+                    )
+                    .orElseGet(AffectationEnseignement::new);
+        }
+
 
         affectation.setSemestre(semestre);
-        affectation.setDepartement(departement);
+        affectation.setCommun(isCommun);
+        affectation.setDepartement(isCommun ? null : departement);
         affectation.setMatiere(matiere);
         affectation.setType(type);
         affectation.setProfesseur(professeur);
-        affectation.setSalle(salle); // ✅ NEW
+        affectation.setSalle(salle);
+
 
         AffectationEnseignement saved = affectationRepo.save(affectation);
         return toDto(saved);
@@ -113,8 +151,11 @@ public class AffectationEnseignementService {
                 .semestreId(a.getSemestre().getId())
                 .semestreLibelle(a.getSemestre().getLibelle())
 
-                .departementId(a.getDepartement().getId())
-                .departementCode(a.getDepartement().getCode())
+                .isCommun(a.isCommun())
+
+                .departementId(a.getDepartement() == null ? null : a.getDepartement().getId())
+                .departementCode(a.getDepartement() == null ? null : a.getDepartement().getCode())
+
 
                 .matiereCode(a.getMatiere().getCode())
                 .type(a.getType().name())

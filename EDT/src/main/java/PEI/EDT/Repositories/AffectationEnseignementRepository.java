@@ -16,5 +16,12 @@ public interface AffectationEnseignementRepository extends JpaRepository<Affecta
             TypeSeance type
     );
 
+    Optional<AffectationEnseignement> findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+            Integer semestreId,
+            String matiereCode,
+            TypeSeance type
+    );
+
+
     List<AffectationEnseignement> findBySemestre_IdAndDepartement_Id(Integer semestreId, Integer departementId);
 }

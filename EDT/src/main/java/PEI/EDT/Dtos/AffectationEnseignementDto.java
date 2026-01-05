@@ -16,6 +16,7 @@ public class AffectationEnseignementDto {
     private Integer departementId;
     private String departementCode;
 
+    private Boolean isCommun;
     // Teaching
     private String matiereCode;
     private String type; // CM | TD | TP

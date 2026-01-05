@@ -36,6 +36,8 @@ public class SeanceService {
 
     public SeanceDto create(CreateSeanceRequestDto dto) {
 
+        boolean isCommun = Boolean.TRUE.equals(dto.getIsCommun());
+
         // type / creneau / semaine always required
         if (dto.getCreneauId() == null || dto.getSemaineId() == null || dto.getType() == null) {
             throw new BadRequestException("type, creneauId, semaineId are required.");
@@ -55,6 +57,25 @@ public class SeanceService {
 
         SemaineAcademique semaine = semaineRepo.findById(dto.getSemaineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semaine not found: " + dto.getSemaineId()));
+
+        // ✅ isCommun rules:
+        // - DEP creneau => isCommun must be false and exactly one department
+        // - HE/ST (common slot) => isCommun must be true and no departmentIds
+        if (creneau.getTypeCreneau() == TypeCreneau.DEP) {
+            if (isCommun) {
+                throw new BadRequestException("For DEP creneau, isCommun must be false.");
+            }
+            if (dto.getDepartementIds() == null || dto.getDepartementIds().size() != 1) {
+                throw new BadRequestException("For DEP creneau, you must provide exactly 1 departementId.");
+            }
+        } else {
+            if (!isCommun) {
+                throw new BadRequestException("For HE/ST creneau (commun), isCommun must be true.");
+            }
+            if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
+                throw new BadRequestException("For commun seance (isCommun=true), departementIds must be empty.");
+            }
+        }
 
         // Ensure semaine belongs to same semestre as creneau
         if (!semaine.getSemestre().getId().equals(creneau.getSemestre().getId())) {
@@ -101,15 +122,10 @@ public class SeanceService {
             }
             // salle already optional (seance.setSalle(salle)) - ok
         } else {
-            // Teaching session => keep affectation logic (DEP case)
+            // Teaching session => professor + salle come from AffectationEnseignement
             if (creneau.getTypeCreneau() == TypeCreneau.DEP) {
 
-                if (dto.getDepartementIds() == null || dto.getDepartementIds().size() != 1) {
-                    throw new BadRequestException(
-                            "For DEP creneau, exactly one departementId is required to resolve professeur."
-                    );
-                }
-
+                // already validated: exactly 1 departementId
                 Integer deptId = dto.getDepartementIds().get(0);
 
                 AffectationEnseignement aff = affectationRepo
@@ -124,12 +140,25 @@ public class SeanceService {
                         ));
 
                 seance.setProfesseur(aff.getProfesseur());
-                seance.setSalle(aff.getSalle()); // ✅ THIS IS THE KEY FIX
+                seance.setSalle(aff.getSalle());
 
+            } else {
+                // ✅ COMMUN (HE/ST): use common affectation (isCommun=true)
+                AffectationEnseignement aff = affectationRepo
+                        .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+                                creneau.getSemestre().getId(),
+                                matiere.getCode(),
+                                typeSeance
+                        )
+                        .orElseThrow(() -> new BadRequestException(
+                                "No common AffectationEnseignement found (isCommun=true) for (semestre, matiere, type)."
+                        ));
+
+                seance.setProfesseur(aff.getProfesseur());
+                seance.setSalle(aff.getSalle());
             }
-            // NOTE: For non-DEP teaching types, your current project does not resolve professeur here.
-            // We keep it unchanged to avoid breaking your current model.
         }
+
 
         // =========================
         // COLLISION CHECKS
@@ -149,16 +178,41 @@ public class SeanceService {
             targetDepts = resolveTargetDepartements(seance, dto.getDepartementIds());
             checkDepartementCollisionsCreate(seance, targetDepts);
         } else {
-            if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
-                // validate departments exist
-                targetDepts = dto.getDepartementIds().stream()
-                        .map(deptId -> departementRepo.findById(deptId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId)))
-                        .toList();
+            // ✅ Non-teaching:
+            // - if isCommun=true => attach to ALL departments automatically
+            // - else            => attach only if user provided departementIds
+            if (isCommun) {
 
+                // Optional strict rule: for commun non-teaching, don't accept departementIds
+                if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
+                    throw new BadRequestException("For non-teaching commun seance (isCommun=true), do not send departementIds.");
+                }
+
+                // Attach to ALL departments (global)
+                targetDepts = departementRepo.findAll();
                 checkDepartementCollisionsCreate(seance, targetDepts);
+
+            } else {
+
+                // DEP non-teaching: if you want to enforce exactly 1 dept when creneau is DEP:
+                if (creneau.getTypeCreneau() == TypeCreneau.DEP) {
+                    if (dto.getDepartementIds() == null || dto.getDepartementIds().size() != 1) {
+                        throw new BadRequestException("For DEP creneau (non-teaching), you must provide exactly 1 departementId.");
+                    }
+                }
+
+                if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
+                    // validate departments exist
+                    targetDepts = dto.getDepartementIds().stream()
+                            .map(deptId -> departementRepo.findById(deptId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId)))
+                            .toList();
+
+                    checkDepartementCollisionsCreate(seance, targetDepts);
+                }
             }
         }
+
 
         // teacher collision only if professeur != null (avoid NPE)
         if (seance.getProfesseur() != null) {
@@ -252,10 +306,9 @@ public class SeanceService {
             if (seance.getMatiere() == null) {
                 throw new BadRequestException("For CM/TD/TP: matiereCode is required (cannot be null).");
             }
-            if (seance.getSalle() == null) {
-                throw new BadRequestException("For CM/TD/TP: salleId is required (cannot be null).");
-            }
+            // ✅ salle will be resolved from AffectationEnseignement (DEP or COMMUN)
         }
+
 
         // ----------------------------
         // Professeur assignment rules
@@ -289,15 +342,32 @@ public class SeanceService {
             }
 
         } else {
-            // Teaching seance (CM/TD/TP): professor comes from AffectationEnseignement in DEP case (same as your create)
+            // Teaching: always resolve professeur + salle from AffectationEnseignement
+
+            boolean effectiveCommun = (dto.getIsCommun() != null)
+                    ? Boolean.TRUE.equals(dto.getIsCommun())
+                    : (seance.getCreneau().getTypeCreneau() != TypeCreneau.DEP);
 
             if (seance.getCreneau().getTypeCreneau() == TypeCreneau.DEP) {
-
-                if (dto.getDepartementIds() == null || dto.getDepartementIds().size() != 1) {
-                    throw new BadRequestException("For DEP creneau, exactly one departementId is required to resolve professeur.");
+                if (effectiveCommun) {
+                    throw new BadRequestException("For DEP creneau, isCommun must be false.");
                 }
 
-                Integer deptId = dto.getDepartementIds().get(0);
+                // Determine deptId: prefer dto.departementIds if provided; otherwise infer from existing join
+                Integer deptId = null;
+
+                if (dto.getDepartementIds() != null) {
+                    if (dto.getDepartementIds().size() != 1) {
+                        throw new BadRequestException("For DEP creneau, you must provide exactly 1 departementId.");
+                    }
+                    deptId = dto.getDepartementIds().get(0);
+                } else {
+                    // infer from current join table
+                    if (seance.getSeanceDepartements() == null || seance.getSeanceDepartements().size() != 1) {
+                        throw new BadRequestException("Cannot infer departementId for DEP seance; provide departementIds=[x].");
+                    }
+                    deptId = seance.getSeanceDepartements().get(0).getDepartement().getId();
+                }
 
                 AffectationEnseignement aff = affectationRepo
                         .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
@@ -311,11 +381,32 @@ public class SeanceService {
                         ));
 
                 seance.setProfesseur(aff.getProfesseur());
-            }
+                seance.setSalle(aff.getSalle());
 
-            // If you later want to enforce professor resolution for non-DEP teaching slots,
-            // you can add it here. For now we keep your existing behavior.
+            } else {
+                // COMMUN (HE/ST)
+                if (!effectiveCommun) {
+                    throw new BadRequestException("For HE/ST creneau (commun), isCommun must be true.");
+                }
+                if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
+                    throw new BadRequestException("For commun seance (isCommun=true), departementIds must be empty.");
+                }
+
+                AffectationEnseignement aff = affectationRepo
+                        .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+                                seance.getCreneau().getSemestre().getId(),
+                                seance.getMatiere().getCode(),
+                                seance.getType()
+                        )
+                        .orElseThrow(() -> new BadRequestException(
+                                "No common AffectationEnseignement found (isCommun=true) for (semestre, matiere, type)."
+                        ));
+
+                seance.setProfesseur(aff.getProfesseur());
+                seance.setSalle(aff.getSalle());
+            }
         }
+
 
         // ----------------------------
         // Department resolution + collisions
@@ -323,7 +414,13 @@ public class SeanceService {
 
         if (teaching) {
             // Your original behavior: determine target departments from DEP/common rule
-            List<Departement> targetDepts = resolveTargetDepartements(seance, dto.getDepartementIds());
+            List<Departement> targetDepts = resolveTargetDepartements(
+                    seance,
+                    (seance.getCreneau().getTypeCreneau() == TypeCreneau.DEP)
+                            ? (dto.getDepartementIds() != null ? dto.getDepartementIds()
+                            : seance.getSeanceDepartements().stream().map(sd -> sd.getDepartement().getId()).toList())
+                            : null
+            );
 
             // salle collision only if salle is not null (should be non-null for teaching)
             if (seance.getSalle() != null) {
@@ -443,6 +540,9 @@ public class SeanceService {
             Integer deptId = requestedDepartementIds.get(0);
             Departement dept = departementRepo.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId));
+            if (seance.getSalle().getDepartement() == null) {
+                throw new BadRequestException("For DEP seance, salle must be attached to a departement (AMPHI is not allowed for DEP).");
+            }
 
             // Keep your consistency rule
             if (!seance.getSalle().getDepartement().getId().equals(dept.getId())) {
@@ -451,8 +551,8 @@ public class SeanceService {
             return List.of(dept);
         }
 
-        // common: all departments in same school
-        String ecoleId = seance.getSalle().getDepartement().getEcole().getId();
+        String ecoleId = seance.getSalle().getEcole().getId();
+
         List<Departement> depts = departementRepo.findByEcole_Id(ecoleId);
         if (depts.isEmpty()) {
             throw new BadRequestException("No departments found for ecoleId=" + ecoleId + " (cannot attach common seance).");
@@ -518,6 +618,9 @@ public class SeanceService {
             Integer deptId = requestedDepartementIds.get(0);
             Departement dept = departementRepo.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId));
+            if (seance.getSalle().getDepartement() == null) {
+                throw new BadRequestException("For DEP seance, salle must be attached to a departement (AMPHI is not allowed for DEP).");
+            }
 
             // Strong consistency: the room belongs to a department, DEP seance should match that department
             if (!seance.getSalle().getDepartement().getId().equals(dept.getId())) {
@@ -534,13 +637,22 @@ public class SeanceService {
             return;
         }
 
-        // Common seance (HE/ST/AUTRE): attach to ALL departments of the same Ecole
-        String ecoleId = seance.getSalle().getDepartement().getEcole().getId();
-        List<Departement> depts = departementRepo.findByEcole_Id(ecoleId);
+        // ✅ Common slot (HE/ST/AUTRE):
+        // If salle exists => attach departments of that school.
+        // If salle is null (ex: AUTRE Instruction Militaire) => attach ALL departments.
+        List<Departement> depts;
+
+        if (seance.getSalle() != null && seance.getSalle().getEcole() != null) {
+            String ecoleId = seance.getSalle().getEcole().getId();
+            depts = departementRepo.findByEcole_Id(ecoleId);
+        } else {
+            depts = departementRepo.findAll();
+        }
 
         if (depts.isEmpty()) {
-            throw new BadRequestException("No departments found for ecoleId=" + ecoleId + " (cannot attach common seance).");
+            throw new BadRequestException("No departments found (cannot attach common seance).");
         }
+
 
         List<SeanceDepartement> links = depts.stream()
                 .map(d -> SeanceDepartement.builder()

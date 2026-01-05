@@ -27,10 +27,23 @@ public final class DtoMapper {
                 .typeCreneau(s.getCreneau().getTypeCreneau().name())
 
                 .matiereCode(s.getMatiere() == null ? null : s.getMatiere().getCode())
+                .matiereIntitule(
+                        s.getMatiere() == null ? null : s.getMatiere().getIntitule()
+                )
+
 
                 .salleId(s.getSalle() == null ? null : s.getSalle().getId())
                 .salleNom(s.getSalle() == null ? null : s.getSalle().getNom())
                 .typeSalle(s.getSalle() == null ? null : s.getSalle().getTypeSalle().name())
+                .professeurId(
+                        s.getProfesseur() == null ? null : s.getProfesseur().getId()
+                )
+                .professeurNom(
+                        s.getProfesseur() == null ? null : s.getProfesseur().getNom()
+                )
+                .professeurPrenom(
+                        s.getProfesseur() == null ? null : s.getProfesseur().getPrenom()
+                )
 
                 .semaineId(s.getSemaineAcademique().getId())
                 .numeroSemaine(s.getSemaineAcademique().getNumeroSemaine())

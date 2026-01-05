@@ -29,13 +29,18 @@ public class AffectationEnseignement {
     @JoinColumn(name = "semestre_id", nullable = false)
     private Semestre semestre;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "departement_id", nullable = false)
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "departement_id", nullable = true)
     private Departement departement;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "matiere_code", nullable = false)
     private Matiere matiere;
+
+    @Column(name = "is_commun", nullable = false)
+    @Builder.Default
+    private boolean isCommun = false;
+
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "professeur_id", nullable = false)

@@ -19,20 +19,46 @@ public class MatiereService {
 
     private final MatiereRepository matiereRepo;
 
+    private void requirePositive(Integer value, String field) {
+        if (value == null) {
+            throw new BadRequestException(field + " is required.");
+        }
+        if (value < 0) {
+            throw new BadRequestException(field + " must be >= 0.");
+        }
+    }
+
+
     public MatiereDto create(CreateMatiereDto dto) {
-        if (dto.getCode() == null || dto.getCode().isBlank()) throw new BadRequestException("code is required.");
-        if (dto.getIntitule() == null || dto.getIntitule().isBlank()) throw new BadRequestException("intitule is required.");
+
+        if (dto.getCode() == null || dto.getCode().isBlank())
+            throw new BadRequestException("code is required.");
+
+        if (dto.getIntitule() == null || dto.getIntitule().isBlank())
+            throw new BadRequestException("intitule is required.");
+
+        // REQUIRED numeric fields
+        requirePositive(dto.getCredits(), "credits");
+        requirePositive(dto.getHCm(), "hCm");
+        requirePositive(dto.getHTd(), "hTd");
+        requirePositive(dto.getHTp(), "hTp");
 
         String code = dto.getCode().trim().toUpperCase();
-        if (matiereRepo.existsById(code)) throw new BadRequestException("Matiere already exists: " + code);
+        if (matiereRepo.existsById(code))
+            throw new BadRequestException("Matiere already exists: " + code);
 
-        Matiere m = Matiere.builder()
+        Matiere matiere = Matiere.builder()
                 .code(code)
-                .intitule(dto.getIntitule())
+                .intitule(dto.getIntitule().trim())
+                .credits(dto.getCredits())
+                .hCm(dto.getHCm())
+                .hTd(dto.getHTd())
+                .hTp(dto.getHTp())
                 .build();
 
-        return toDto(matiereRepo.save(m));
+        return toDto(matiereRepo.save(matiere));
     }
+
 
     @Transactional(readOnly = true)
     public MatiereDto getById(String code) {
@@ -47,12 +73,36 @@ public class MatiereService {
     }
 
     public MatiereDto update(String code, CreateMatiereDto dto) {
-        Matiere m = matiereRepo.findById(code.trim().toUpperCase())
+
+        Matiere m = matiereRepo.findById(code.toUpperCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Matiere not found: " + code));
 
-        if (dto.getIntitule() != null) m.setIntitule(dto.getIntitule());
+        if (dto.getIntitule() != null)
+            m.setIntitule(dto.getIntitule().trim());
+
+        if (dto.getCredits() != null) {
+            requirePositive(dto.getCredits(), "credits");
+            m.setCredits(dto.getCredits());
+        }
+
+        if (dto.getHCm() != null) {
+            requirePositive(dto.getHCm(), "hCm");
+            m.setHCm(dto.getHCm());
+        }
+
+        if (dto.getHTd() != null) {
+            requirePositive(dto.getHTd(), "hTd");
+            m.setHTd(dto.getHTd());
+        }
+
+        if (dto.getHTp() != null) {
+            requirePositive(dto.getHTp(), "hTp");
+            m.setHTp(dto.getHTp());
+        }
+
         return toDto(matiereRepo.save(m));
     }
+
 
     public void delete(String code) {
         String c = code.trim().toUpperCase();
@@ -64,6 +114,11 @@ public class MatiereService {
         return MatiereDto.builder()
                 .code(m.getCode())
                 .intitule(m.getIntitule())
+                .credits(m.getCredits())
+                .hCm(m.getHCm())
+                .hTd(m.getHTd())
+                .hTp(m.getHTp())
                 .build();
     }
+
 }

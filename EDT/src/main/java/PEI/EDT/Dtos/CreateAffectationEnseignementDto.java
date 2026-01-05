@@ -10,6 +10,8 @@ public class CreateAffectationEnseignementDto {
     // Context
     private Integer semestreId;
     private Integer departementId;
+    // ✅ NEW
+    private Boolean isCommun; // if true => departementId must be null
 
     // Teaching definition
     private String matiereCode; // ex: "JAVA", "RESEAUX"

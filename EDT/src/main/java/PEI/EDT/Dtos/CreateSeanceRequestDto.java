@@ -1,7 +1,6 @@
 package PEI.EDT.Dtos;
 
 import lombok.*;
-
 import java.util.List;
 
 @Getter @Setter
@@ -20,6 +19,8 @@ public class CreateSeanceRequestDto {
     private Integer semaineId;
     private Integer professeurId; // optional for DEVOIR/EXAMEN/MEETING/AUTRE
 
+    // ✅ NEW: commun vs dep
+    private Boolean isCommun;
 
     // One or more departements (DEP vs HE/ST)
     private List<Integer> departementIds;

@@ -25,8 +25,14 @@ public class Salle {
     @Column(name = "type_salle", nullable = false, length = 10)
     private TypeSalle typeSalle;
 
+    // ✅ NEW: AMPHI belongs to an ECOLE (school-level room)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "departement_id", nullable = false)
+    @JoinColumn(name = "ecole_id", nullable = false)
+    private Ecole ecole;
+
+    // ✅ CHANGED: departement is now OPTIONAL (NULL for AMPHI)
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "departement_id", nullable = true)
     private Departement departement;
 
     @OneToMany(mappedBy = "salle", fetch = FetchType.LAZY)
