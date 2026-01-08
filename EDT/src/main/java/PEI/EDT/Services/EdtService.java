@@ -13,9 +13,14 @@ import PEI.EDT.Repositories.DepartementRepository;
 import PEI.EDT.Repositories.SemaineAcademiqueRepository;
 import PEI.EDT.Repositories.SeanceRepository;
 import PEI.EDT.Repositories.SemestreRepository;
+import PEI.EDT.Security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import PEI.EDT.Entities.Utilisateur;
+import PEI.EDT.Entities.Enums.RoleUtilisateur;
+import PEI.EDT.Exceptions.ForbiddenException;
+
 
 import java.util.*;
 
@@ -28,10 +33,23 @@ public class EdtService {
     private final SemaineAcademiqueRepository semaineRepo;
     private final SemestreRepository semestreRepo;
     private final DepartementRepository departementRepo;
+    private final CurrentUserService currentUserService;
+
 
     public EdtSemaineDto getEdt(Integer departementId, Integer semestreId, Integer numeroSemaine) {
         if (departementId == null || semestreId == null || numeroSemaine == null) {
             throw new BadRequestException("departementId, semestreId, numeroSemaine are required.");
+        }
+        Utilisateur current = currentUserService.getCurrentUser();
+
+
+        if (current.getRole() == RoleUtilisateur.ETUDIANT) {
+            if (current.getDepartement() == null) {
+                throw new ForbiddenException("ETUDIANT must be linked to a departement.");
+            }
+            if (!current.getDepartement().getId().equals(departementId)) {
+                throw new ForbiddenException("ETUDIANT can view only the EDT of his departement.");
+            }
         }
 
         Semestre semestre = semestreRepo.findById(semestreId)

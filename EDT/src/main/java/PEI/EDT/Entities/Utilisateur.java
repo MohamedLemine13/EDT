@@ -3,6 +3,7 @@ package PEI.EDT.Entities;
 import PEI.EDT.Entities.Enums.RoleUtilisateur;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "utilisateur")
@@ -23,6 +24,10 @@ public class Utilisateur {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @JsonIgnore
+    @Column(nullable = false)
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

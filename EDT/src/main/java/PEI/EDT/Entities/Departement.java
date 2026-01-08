@@ -1,5 +1,6 @@
 package PEI.EDT.Entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class Departement {
     @Column(nullable = false)
     private String nom;
 
+    @JsonIgnore
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "ecole_id", nullable = false)
     private Ecole ecole;

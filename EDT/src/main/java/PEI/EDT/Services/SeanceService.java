@@ -10,10 +10,13 @@ import PEI.EDT.Entities.Enums.TypeSeance;
 import PEI.EDT.Exceptions.BadRequestException;
 import PEI.EDT.Exceptions.ResourceNotFoundException;
 import PEI.EDT.Repositories.*;
+import PEI.EDT.Security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import PEI.EDT.Entities.Enums.RoleUtilisateur;
+import PEI.EDT.Exceptions.ForbiddenException;
+import PEI.EDT.Security.CurrentUserService;
 import java.util.List;
 
 @Service
@@ -31,7 +34,7 @@ public class SeanceService {
     private final DepartementRepository departementRepo;
     private final AffectationEnseignementRepository affectationRepo;
     private final ProfesseurRepository professeurRepo;
-
+    private final   CurrentUserService currentUserService;
 
 
     public SeanceDto create(CreateSeanceRequestDto dto) {
@@ -76,6 +79,9 @@ public class SeanceService {
                 throw new BadRequestException("For commun seance (isCommun=true), departementIds must be empty.");
             }
         }
+
+        Utilisateur current = currentUserService.getCurrentUser();
+        assertCanWriteSeance(current, creneau.getTypeCreneau(), dto.getDepartementIds());
 
         // Ensure semaine belongs to same semestre as creneau
         if (!semaine.getSemestre().getId().equals(creneau.getSemestre().getId())) {
@@ -241,6 +247,29 @@ public class SeanceService {
 
         Seance seance = seanceRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Seance not found: " + id));
+
+        Utilisateur current = currentUserService.getCurrentUser();
+
+// Ensure join table is loaded (needed if dto.departementIds is null)
+        refreshJoinCollection(seance);
+
+// Determine the effective creneau type (if user changes creneauId, we must validate the NEW type)
+        TypeCreneau effectiveType;
+        if (dto.getCreneauId() != null) {
+            Creneau newCreneau = creneauRepo.findById(dto.getCreneauId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Creneau not found: " + dto.getCreneauId()));
+            effectiveType = newCreneau.getTypeCreneau();
+        } else {
+            effectiveType = seance.getCreneau().getTypeCreneau();
+        }
+
+// Determine the effective departments list (if user doesn't send departementIds, use current join table)
+        List<Integer> effectiveDeptIds = (dto.getDepartementIds() != null)
+                ? dto.getDepartementIds()
+                : (seance.getSeanceDepartements() == null ? List.of()
+                : seance.getSeanceDepartements().stream().map(sd -> sd.getDepartement().getId()).toList());
+
+        assertCanWriteSeance(current, effectiveType, effectiveDeptIds);
 
         // Track whether the caller changed the type in this request
         boolean typeChangedInRequest = (dto.getType() != null);
@@ -488,22 +517,108 @@ public class SeanceService {
 
 
     public void delete(Integer id) {
-        if (!seanceRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Seance not found: " + id);
-        }
+
+        Seance s = seanceRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seance not found: " + id));
+
+        Utilisateur current = currentUserService.getCurrentUser();
+        refreshJoinCollection(s);
+        List<Integer> deptIds = (s.getSeanceDepartements() == null) ? List.of()
+                : s.getSeanceDepartements().stream().map(sd -> sd.getDepartement().getId()).toList();
+
+        assertCanWriteSeance(current, s.getCreneau().getTypeCreneau(), deptIds);
+
         seanceDepartementRepo.deleteBySeance_Id(id);
         seanceRepo.deleteById(id);
     }
+
 
     @Transactional(readOnly = true)
     public SeanceDto getById(Integer id) {
         Seance s = seanceRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Seance not found: " + id));
 
-        // ✅ refresh in-place
         refreshJoinCollection(s);
 
+        Utilisateur current = currentUserService.getCurrentUser();
+        assertCanReadSeance(current, s);
+
         return DtoMapper.toSeanceDto(s);
+    }
+
+
+    private void assertCanWriteSeance(Utilisateur u, TypeCreneau typeCreneau, List<Integer> departementIds) {
+
+        if (u.getRole() == RoleUtilisateur.ADMIN) return;
+
+        // Students cannot create/update/delete
+        if (u.getRole() == RoleUtilisateur.ETUDIANT) {
+            throw new ForbiddenException("ETUDIANT is not allowed to modify seances.");
+        }
+
+        if (u.getRole() == RoleUtilisateur.CHEF_HE) {
+            if (typeCreneau != TypeCreneau.HE) {
+                throw new ForbiddenException("CHEF_HE can modify only HE seances.");
+            }
+            return;
+        }
+
+        if (u.getRole() == RoleUtilisateur.CHEF_ST) {
+            if (typeCreneau != TypeCreneau.ST) {
+                throw new ForbiddenException("CHEF_ST can modify only ST seances.");
+            }
+            return;
+        }
+
+        if (u.getRole() == RoleUtilisateur.CHEF_DEP) {
+            if (typeCreneau != TypeCreneau.DEP) {
+                throw new ForbiddenException("CHEF_DEP can modify only DEP seances.");
+            }
+
+            if (u.getDepartement() == null) {
+                throw new ForbiddenException("CHEF_DEP must be linked to a departement.");
+            }
+
+            if (departementIds == null || departementIds.isEmpty()) {
+                throw new ForbiddenException("DEP seance must have departementIds.");
+            }
+
+            Integer chefDeptId = u.getDepartement().getId();
+            if (!departementIds.contains(chefDeptId)) {
+                throw new ForbiddenException("CHEF_DEP can modify only his departement seances.");
+            }
+            return;
+        }
+
+        throw new ForbiddenException("Role not allowed to modify seances: " + u.getRole());
+    }
+
+    private void assertCanReadSeance(Utilisateur u, Seance s) {
+
+        if (u.getRole() == RoleUtilisateur.ADMIN) return;
+
+        // All non-students can view all EDT
+        if (u.getRole() != RoleUtilisateur.ETUDIANT) return;
+
+        if (u.getDepartement() == null) {
+            throw new ForbiddenException("ETUDIANT must be linked to a departement.");
+        }
+
+        // Commun (HE/ST) seances: visible to all students
+        if (s.getCreneau() != null && s.getCreneau().getTypeCreneau() != TypeCreneau.DEP) {
+            return;
+        }
+
+        // DEP seances: visible only if student's department is in the join table
+        Integer studentDeptId = u.getDepartement().getId();
+
+        boolean belongs = s.getSeanceDepartements() != null
+                && s.getSeanceDepartements().stream()
+                .anyMatch(sd -> sd.getDepartement().getId().equals(studentDeptId));
+
+        if (!belongs) {
+            throw new ForbiddenException("ETUDIANT can view only seances of his departement.");
+        }
     }
 
     private void checkSalleCollisionCreate(Seance seance) {
