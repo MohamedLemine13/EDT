@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ESP Dashboard Theme - Tailwind CSS v4 compatible */
+@theme {
+  /* ESP Brand Colors - from esp.mr */
+  --color-esp-green-900: #1a6b35;
+  --color-esp-green-800: #228b45;
+  --color-esp-green-700: #2db558;  /* Primary brand green */
+  --color-esp-green-600: #3fc966;
+  --color-esp-green-500: #5dd47d;
+  --color-esp-green-100: #dcf5e4;
+
+  --color-esp-gold-500: #FFB300;
+  --color-esp-gold-300: #FFE082;
+
+  /* Session Type Colors - consistent across themes */
+  --color-cell-cm: #1565C0;
+  --color-cell-td: #2E7D32;
+  --color-cell-tp: #2E7D32;
+  --color-cell-exam: #C62828;
+  --color-cell-online: #7CB342;
+  --color-cell-devoir: #F9A825;
+  --color-cell-military: #5D4037;
+  --color-cell-club: #7B1FA2;
+  --color-cell-empty: #37474F;
+
+  /* Progress Colors */
+  --color-progress-complete: #4CAF50;
+  --color-progress-good: #8BC34A;
+  --color-progress-warning: #FF9800;
+  --color-progress-danger: #F44336;
+
+  /* shadcn/ui Semantic Colors - Light mode defaults */
+  --color-background: #fafafa;
+  --color-foreground: #101414;
+  --color-card: #ffffff;
+  --color-card-foreground: #101414;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #101414;
+  --color-primary: #228b45;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #101414;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #101414;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #228b45;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Dark theme overrides */
+.dark {
+  --color-background: #101414;
+  --color-foreground: #e0e3e2;
+  --color-card: #191c1c;
+  --color-card-foreground: #e0e3e2;
+  --color-popover: #191c1c;
+  --color-popover-foreground: #e0e3e2;
+  --color-primary: #2db558;
+  --color-primary-foreground: #101414;
+  --color-secondary: #191c1c;
+  --color-secondary-foreground: #e0e3e2;
+  --color-muted: #363a39;
+  --color-muted-foreground: #9ca3a2;
+  --color-accent: #363a39;
+  --color-accent-foreground: #e0e3e2;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #e0e3e2;
+  --color-border: #363a39;
+  --color-input: #363a39;
+  --color-ring: #2db558;
+  color-scheme: dark;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
+}
+
+@keyframes zoom-out-95 {
+  from { transform: scale(1); }
+  to { transform: scale(0.95); }
+}
+
+@keyframes slide-in-from-top-2 {
+  from { transform: translateY(-0.5rem); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-bottom-2 {
+  from { transform: translateY(0.5rem); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-left-2 {
+  from { transform: translateX(-0.5rem); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-in-from-right-2 {
+  from { transform: translateX(0.5rem); }
+  to { transform: translateX(0); }
+}
+
+/* Apply animations */
+.animate-in {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.animate-out {
+  animation-duration: 150ms;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+
+.fade-in-0 { animation-name: fade-in; }
+.fade-out-0 { animation-name: fade-out; }
+.zoom-in-95 { animation-name: zoom-in-95; }
+.zoom-out-95 { animation-name: zoom-out-95; }
+.slide-in-from-top-2 { animation-name: slide-in-from-top-2; }
+.slide-in-from-bottom-2 { animation-name: slide-in-from-bottom-2; }
+.slide-in-from-left-2 { animation-name: slide-in-from-left-2; }
+.slide-in-from-right-2 { animation-name: slide-in-from-right-2; }
+
+/* Base styles */
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom scrollbar - light theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(0.92 0 0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0 0);
+}
+
+/* Custom scrollbar - dark theme */
+.dark ::-webkit-scrollbar-track {
+  background: oklch(0.2 0 0);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0);
+}
+
+/* Focus visible styles */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Session cell color utilities */
+.bg-cell-cm { background-color: var(--color-cell-cm); }
+.bg-cell-td { background-color: var(--color-cell-td); }
+.bg-cell-tp { background-color: var(--color-cell-tp); }
+.bg-cell-exam { background-color: var(--color-cell-exam); }
+.bg-cell-online { background-color: var(--color-cell-online); }
+.bg-cell-devoir { background-color: var(--color-cell-devoir); }
+.bg-cell-military { background-color: var(--color-cell-military); }
+.bg-cell-club { background-color: var(--color-cell-club); }
+.bg-cell-empty { background-color: var(--color-cell-empty); }
+
+/* Progress bar color utilities */
+.bg-progress-complete { background-color: var(--color-progress-complete); }
+.bg-progress-good { background-color: var(--color-progress-good); }
+.bg-progress-warning { background-color: var(--color-progress-warning); }
+.bg-progress-danger { background-color: var(--color-progress-danger); }

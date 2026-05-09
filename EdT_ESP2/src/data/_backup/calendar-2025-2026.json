@@ -1,0 +1,136 @@
+{
+  "academicYear": "2025/2026",
+  "events": [
+    {
+      "id": "e1",
+      "date": "2025-10-06",
+      "title": "Début des cours S1 et S3",
+      "type": "course_start",
+      "description": "Premier jour de cours pour les semestres 1 et 3"
+    },
+    {
+      "id": "e2",
+      "date": "2025-11-25",
+      "title": "Fête des forces armées",
+      "type": "holiday",
+      "description": "Jour férié national"
+    },
+    {
+      "id": "e3",
+      "date": "2025-11-28",
+      "title": "Fête de l'indépendance",
+      "type": "holiday",
+      "description": "Jour férié national"
+    },
+    {
+      "id": "e4",
+      "date": "2025-12-20",
+      "endDate": "2026-01-04",
+      "title": "Vacances du 1er semestre",
+      "type": "vacation",
+      "description": "Vacances de fin d'année"
+    },
+    {
+      "id": "e5",
+      "date": "2026-01-12",
+      "endDate": "2026-01-23",
+      "title": "Examens S1 et S3",
+      "type": "exam",
+      "description": "Période d'examens du premier semestre"
+    },
+    {
+      "id": "e6",
+      "date": "2026-01-26",
+      "endDate": "2026-02-06",
+      "title": "Soutenance des stages AI et début des PFE",
+      "type": "soutenance",
+      "description": "Soutenances et lancement des projets de fin d'études"
+    },
+    {
+      "id": "e7",
+      "date": "2026-02-16",
+      "title": "Début des cours S2 et S4",
+      "type": "course_start",
+      "description": "Premier jour de cours pour les semestres 2 et 4"
+    },
+    {
+      "id": "e8",
+      "date": "2026-03-19",
+      "endDate": "2026-03-20",
+      "title": "Al Fitr",
+      "type": "religious",
+      "description": "Fête de l'Aïd el-Fitr (dates approximatives)"
+    },
+    {
+      "id": "e9",
+      "date": "2026-05-01",
+      "title": "Fête du travail",
+      "type": "holiday",
+      "description": "Jour férié international"
+    },
+    {
+      "id": "e10",
+      "date": "2026-05-25",
+      "title": "Fête de l'UA",
+      "type": "holiday",
+      "description": "Journée de l'Afrique"
+    },
+    {
+      "id": "e11",
+      "date": "2026-05-27",
+      "title": "Al Adha",
+      "type": "religious",
+      "description": "Fête de l'Aïd el-Adha (dates approximatives)"
+    },
+    {
+      "id": "e12",
+      "date": "2026-06-01",
+      "endDate": "2026-06-15",
+      "title": "Examens du 2ème semestre / Soutenances PFE",
+      "type": "exam",
+      "description": "Période d'examens et soutenances de fin d'année"
+    },
+    {
+      "id": "e13",
+      "date": "2026-06-08",
+      "endDate": "2026-06-12",
+      "title": "Examens S2 et S4 / Soutenances PFE",
+      "type": "exam",
+      "description": "Examens des semestres 2 et 4"
+    },
+    {
+      "id": "e14",
+      "date": "2026-06-15",
+      "title": "Début des stages Assistant Ingénieur",
+      "type": "course_start",
+      "description": "Début des stages pour les étudiants"
+    },
+    {
+      "id": "e15",
+      "date": "2026-06-28",
+      "title": "Cérémonie de fin d'année",
+      "type": "soutenance",
+      "description": "Cérémonie officielle de clôture"
+    },
+    {
+      "id": "e16",
+      "date": "2026-07-14",
+      "title": "Début des stages découverte entreprise (3ème année)",
+      "type": "course_start",
+      "description": "Début au plus tard des stages de découverte"
+    },
+    {
+      "id": "e17",
+      "date": "2026-08-08",
+      "title": "Fin des stages",
+      "type": "soutenance",
+      "description": "Fin des stages Assistant Ingénieur et stages découverte entreprise"
+    }
+  ],
+  "weekNumbers": {
+    "S1_S3_start": 1,
+    "S1_S3_end": 18,
+    "S2_S4_start": 1,
+    "S2_S4_end": 18
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "hooks": [
+    {
+      "name": "lint-format-feedback",
+      "description": "Auto-run ESLint + Prettier after file edits for immediate feedback",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit|Write",
+        "path": "**/*.{ts,tsx,js,jsx,json,css}"
+      },
+      "type": "command",
+      "command": "pnpm lint --fix 2>&1 | head -20 || true",
+      "timeout": 60,
+      "note": "Creates feedback loop: edit → lint → Claude sees errors → fix"
+    },
+    {
+      "name": "skill-evaluation-reminder",
+      "description": "Remind to evaluate skills before starting implementation tasks",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Read",
+        "path": "CLAUDE.md"
+      },
+      "type": "command",
+      "command": "echo '\n🎯 Skills loaded. Evaluate which are relevant before implementing.\n   Available: find-ui, generate-ui, ui-ux-pro-max\n'"
+    },
+    {
+      "name": "schedule-component-reminder",
+      "description": "Remind to check PRD when schedule components are modified",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit",
+        "path": "src/components/schedule/**/*.tsx"
+      },
+      "type": "command",
+      "command": "echo '\n📅 Schedule component modified!\n   Reference: docs/PRD.md Section 6.1 (Emploi Page)\n   Check: Cell colors, interactions, modal content\n'"
+    },
+    {
+      "name": "planning-component-reminder",
+      "description": "Remind to check PRD when planning matrix components are modified",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit",
+        "path": "src/components/planning/**/*.tsx"
+      },
+      "type": "command",
+      "command": "echo '\n📊 Planning component modified!\n   Reference: docs/PRD.md Section 6.2 (Plan Page)\n   Check: Matrix layout, legend, week navigation\n'"
+    },
+    {
+      "name": "bilan-component-reminder",
+      "description": "Remind to check PRD when bilan components are modified",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit",
+        "path": "src/components/bilan/**/*.tsx"
+      },
+      "type": "command",
+      "command": "echo '\n📈 Bilan component modified!\n   Reference: docs/PRD.md Section 6.3 (Bilan Page)\n   Check: Progress bars, color rules, sorting\n'"
+    },
+    {
+      "name": "types-change-reminder",
+      "description": "Remind to update domain rules when types change",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit",
+        "path": "src/types/**/*.ts"
+      },
+      "type": "command",
+      "command": "echo '\n📝 Types modified!\n   Consider updating: .claude/rules/schedule-domain.md\n   Ensure PRD Section 9 data models match\n'"
+    },
+    {
+      "name": "mock-data-reminder",
+      "description": "Remind about data structure when mock data is edited",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool": "Edit",
+        "path": "src/data/**/*.json"
+      },
+      "type": "command",
+      "command": "echo '\n📦 Mock data modified!\n   Ensure structure matches types in src/types/index.ts\n   Reference: PRD Section 9 for data models\n'"
+    }
+  ]
+}

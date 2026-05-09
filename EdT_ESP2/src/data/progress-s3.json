@@ -1,0 +1,79 @@
+{
+  "semester": "S3",
+  "period": {
+    "start": "2026-02-02",
+    "end": "2026-02-07"
+  },
+  "courses": [
+    {
+      "courseCode": "IRT31",
+      "courseName": "Développement JEE",
+      "teacher": "Abderrahmane",
+      "planned": { "cm": 6, "td": 6, "tp": 12 },
+      "completed": { "cm": 5, "td": 4, "tp": 12 },
+      "evaluations": { "devoir": 0, "examen": 0, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT32",
+      "courseName": "Intelligence artificielle",
+      "teacher": "Hafedh",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 4, "td": 5, "tp": 5 },
+      "evaluations": { "devoir": 0, "examen": 0, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT33",
+      "courseName": "Théorie des langages et compilation",
+      "teacher": "Hafedh",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 5, "td": 5, "tp": 6 },
+      "evaluations": { "devoir": 0, "examen": 0, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT34",
+      "courseName": "Communications numériques",
+      "teacher": "El Aoun",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 5, "td": 5, "tp": 6 },
+      "evaluations": { "devoir": 1, "examen": 1, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT35",
+      "courseName": "Architecture des ordinateurs",
+      "teacher": "Sass",
+      "planned": { "cm": 8, "td": 8, "tp": 8 },
+      "completed": { "cm": 8, "td": 8, "tp": 6 },
+      "evaluations": { "devoir": 1, "examen": 0, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT36",
+      "courseName": "Réseaux mobiles",
+      "teacher": "Moktar",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 5, "td": 5, "tp": 6 },
+      "evaluations": { "devoir": 0, "examen": 1, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT37",
+      "courseName": "Réseaux d'opérateurs",
+      "teacher": "El Aoun",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 5, "td": 5, "tp": 6 },
+      "evaluations": { "devoir": 0, "examen": 1, "rattrapage": 0 }
+    },
+    {
+      "courseCode": "IRT38",
+      "courseName": "IoT",
+      "teacher": "Elhacen",
+      "planned": { "cm": 5, "td": 5, "tp": 6 },
+      "completed": { "cm": 5, "td": 5, "tp": 6 },
+      "evaluations": { "devoir": 0, "examen": 0, "rattrapage": 0 }
+    }
+  ],
+  "summary": {
+    "planned": { "cm": 44, "td": 44, "tp": 56 },
+    "completed": { "cm": 42, "td": 42, "tp": 53 },
+    "percentage": { "cm": 95, "td": 95, "tp": 95 },
+    "overall": 95.2
+  }
+}

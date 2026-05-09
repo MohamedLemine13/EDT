@@ -1,0 +1,81 @@
+{
+  "teachers": [
+    {
+      "id": "t1",
+      "name": "Abderrahmane",
+      "department": "IRT",
+      "email": "abderrahmane@esp.mr",
+      "courses": ["IRT31"]
+    },
+    {
+      "id": "t2",
+      "name": "Hafedh",
+      "department": "IRT",
+      "email": "hafedh@esp.mr",
+      "courses": ["IRT32", "IRT33"]
+    },
+    {
+      "id": "t3",
+      "name": "El Aoun",
+      "department": "IRT",
+      "email": "elaoun@esp.mr",
+      "courses": ["IRT34", "IRT37"]
+    },
+    {
+      "id": "t4",
+      "name": "Sass",
+      "department": "IRT",
+      "email": "sass@esp.mr",
+      "courses": ["IRT35"]
+    },
+    {
+      "id": "t5",
+      "name": "Moktar",
+      "department": "IRT",
+      "email": "moktar@esp.mr",
+      "courses": ["IRT36"]
+    },
+    {
+      "id": "t6",
+      "name": "Elhacen",
+      "department": "IRT",
+      "email": "elhacen@esp.mr",
+      "courses": ["IRT38"]
+    },
+    {
+      "id": "t7",
+      "name": "Blake",
+      "department": "HE",
+      "email": "blake@esp.mr",
+      "courses": ["HE31"]
+    },
+    {
+      "id": "t8",
+      "name": "LAM",
+      "department": "HE",
+      "email": "lam@esp.mr",
+      "courses": ["HE33"]
+    },
+    {
+      "id": "t9",
+      "name": "Limam",
+      "department": "IRT",
+      "email": "limam@esp.mr",
+      "courses": ["IRT34"]
+    },
+    {
+      "id": "t10",
+      "name": "Helmi",
+      "department": "IRT",
+      "email": "helmi@esp.mr",
+      "courses": ["IRT38"]
+    },
+    {
+      "id": "t11",
+      "name": "Mayara",
+      "department": "IRT",
+      "email": "mayara@esp.mr",
+      "courses": ["IRT38"]
+    }
+  ]
+}

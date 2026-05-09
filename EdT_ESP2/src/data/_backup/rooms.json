@@ -1,0 +1,84 @@
+{
+  "rooms": [
+    {
+      "id": "r1",
+      "code": "104",
+      "name": "Salle 104",
+      "capacity": 40,
+      "equipment": ["Projecteur", "Tableau blanc", "WiFi"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r2",
+      "code": "101",
+      "name": "Salle 101",
+      "capacity": 35,
+      "equipment": ["Projecteur", "Tableau blanc"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r3",
+      "code": "102",
+      "name": "Salle 102",
+      "capacity": 35,
+      "equipment": ["Projecteur", "Tableau blanc"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r4",
+      "code": "103",
+      "name": "Salle 103",
+      "capacity": 35,
+      "equipment": ["Projecteur", "Tableau blanc", "WiFi"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r5",
+      "code": "105",
+      "name": "Salle 105",
+      "capacity": 30,
+      "equipment": ["Projecteur", "Tableau blanc"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r6",
+      "code": "106",
+      "name": "Salle 106",
+      "capacity": 30,
+      "equipment": ["Projecteur", "Tableau blanc"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r7",
+      "code": "Labo IRT",
+      "name": "Laboratoire Informatique",
+      "capacity": 25,
+      "equipment": ["Ordinateurs", "Projecteur", "WiFi", "Imprimante"],
+      "building": "Bâtiment technique"
+    },
+    {
+      "id": "r8",
+      "code": "Lab électronique",
+      "name": "Laboratoire Électronique",
+      "capacity": 20,
+      "equipment": ["Oscilloscopes", "Multimètres", "Alimentations", "Fer à souder"],
+      "building": "Bâtiment technique"
+    },
+    {
+      "id": "r9",
+      "code": "Amphi",
+      "name": "Amphithéâtre",
+      "capacity": 200,
+      "equipment": ["Projecteur", "Microphone", "Système audio"],
+      "building": "Bâtiment principal"
+    },
+    {
+      "id": "r10",
+      "code": "En ligne",
+      "name": "Cours en ligne",
+      "capacity": 0,
+      "equipment": ["Plateforme e-learning", "Visioconférence"],
+      "building": "Virtuel"
+    }
+  ]
+}

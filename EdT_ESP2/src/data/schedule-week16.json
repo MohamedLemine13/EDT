@@ -1,0 +1,250 @@
+{
+  "semester": "S3",
+  "week": 16,
+  "dateRange": {
+    "start": "2026-01-26",
+    "end": "2026-01-31"
+  },
+  "timeSlots": [
+    { "id": 0, "label": "8h00-9h30", "start": "08:00", "end": "09:30" },
+    { "id": 1, "label": "09h45-11h15", "start": "09:45", "end": "11:15" },
+    { "id": 2, "label": "11h30-13h00", "start": "11:30", "end": "13:00" },
+    { "id": 3, "label": "15h10-16h40", "start": "15:10", "end": "16:40" },
+    { "id": 4, "label": "17h00-18h30", "start": "17:00", "end": "18:30" }
+  ],
+  "days": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+  "sessions": [
+    {
+      "id": "s1",
+      "courseCode": "IRT33",
+      "type": "TP",
+      "day": "lundi",
+      "timeSlot": 0,
+      "room": "104",
+      "teacher": "Hafedh",
+      "status": "scheduled"
+    },
+    {
+      "id": "s2",
+      "courseCode": "IRT34",
+      "type": "TD",
+      "day": "lundi",
+      "timeSlot": 1,
+      "room": "104",
+      "teacher": "El Aoun",
+      "status": "scheduled"
+    },
+    {
+      "id": "s3",
+      "courseCode": "IRT37",
+      "type": "TP",
+      "day": "lundi",
+      "timeSlot": 2,
+      "room": "104",
+      "teacher": "El Aoun",
+      "status": "scheduled"
+    },
+    {
+      "id": "s4",
+      "courseCode": "IRT38",
+      "type": "TD",
+      "day": "lundi",
+      "timeSlot": 3,
+      "room": "104",
+      "teacher": "Elhacen",
+      "status": "online",
+      "tags": ["En ligne"]
+    },
+    {
+      "id": "s5",
+      "courseCode": "IRT38",
+      "type": "TD",
+      "day": "lundi",
+      "timeSlot": 4,
+      "room": "104",
+      "teacher": "Elhacen",
+      "status": "online",
+      "tags": ["En ligne"]
+    },
+    {
+      "id": "s6",
+      "courseCode": "HE31",
+      "type": "TD",
+      "day": "mardi",
+      "timeSlot": 0,
+      "room": "101-106",
+      "teacher": "Blake",
+      "status": "scheduled"
+    },
+    {
+      "id": "s7",
+      "courseCode": "IRT36",
+      "type": "Exam",
+      "day": "mardi",
+      "timeSlot": 3,
+      "room": "104",
+      "teacher": "Moktar",
+      "status": "exam",
+      "tags": ["Exam"]
+    },
+    {
+      "id": "s8",
+      "courseCode": "IRT36",
+      "type": "TD",
+      "day": "mardi",
+      "timeSlot": 3,
+      "room": "104",
+      "teacher": "Moktar",
+      "status": "scheduled"
+    },
+    {
+      "id": "s9",
+      "courseCode": "HE31",
+      "type": "TD",
+      "day": "mercredi",
+      "timeSlot": 0,
+      "room": "101-106",
+      "teacher": "Blake",
+      "status": "scheduled"
+    },
+    {
+      "id": "s10",
+      "courseCode": "HE33",
+      "type": "CM",
+      "day": "mercredi",
+      "timeSlot": 1,
+      "room": "Amphi",
+      "teacher": "LAM",
+      "status": "scheduled"
+    },
+    {
+      "id": "s11",
+      "courseCode": "HE34",
+      "type": "EXAMEN",
+      "day": "mercredi",
+      "timeSlot": 2,
+      "room": "Youba",
+      "teacher": "GEstion",
+      "status": "exam",
+      "tags": ["EXAMEN"]
+    },
+    {
+      "id": "s12",
+      "courseCode": "MILITARY",
+      "type": "Special",
+      "day": "mercredi",
+      "timeSlot": 4,
+      "room": "",
+      "teacher": "",
+      "status": "scheduled",
+      "tags": ["Instruction militaire"]
+    },
+    {
+      "id": "s13",
+      "courseCode": "IRT31",
+      "type": "TP",
+      "day": "jeudi",
+      "timeSlot": 0,
+      "room": "104",
+      "teacher": "Abderrahmane",
+      "status": "scheduled"
+    },
+    {
+      "id": "s14",
+      "courseCode": "IRT35",
+      "type": "TP",
+      "day": "jeudi",
+      "timeSlot": 1,
+      "room": "Lab électronique",
+      "teacher": "Sass",
+      "status": "scheduled"
+    },
+    {
+      "id": "s15",
+      "courseCode": "IRT35",
+      "type": "TP",
+      "day": "jeudi",
+      "timeSlot": 2,
+      "room": "Lab électronique",
+      "teacher": "Sass",
+      "status": "scheduled"
+    },
+    {
+      "id": "s16",
+      "courseCode": "IRT34",
+      "type": "Exam",
+      "day": "jeudi",
+      "timeSlot": 3,
+      "room": "104",
+      "teacher": "El Aoun",
+      "status": "exam",
+      "tags": ["Exam"]
+    },
+    {
+      "id": "s17",
+      "courseCode": "MILITARY",
+      "type": "Special",
+      "day": "vendredi",
+      "timeSlot": 0,
+      "room": "",
+      "teacher": "",
+      "status": "scheduled",
+      "tags": ["Instruction militaire"]
+    },
+    {
+      "id": "s18",
+      "courseCode": "IRT37",
+      "type": "Exam",
+      "day": "vendredi",
+      "timeSlot": 1,
+      "room": "104",
+      "teacher": "El Aoun",
+      "status": "exam",
+      "tags": ["Exam"]
+    },
+    {
+      "id": "s19",
+      "courseCode": "IRT35",
+      "type": "Devoir",
+      "day": "vendredi",
+      "timeSlot": 2,
+      "room": "104",
+      "teacher": "Sass",
+      "status": "scheduled",
+      "tags": ["Devoir"]
+    },
+    {
+      "id": "s20",
+      "courseCode": "CLUB",
+      "type": "Special",
+      "day": "vendredi",
+      "timeSlot": 3,
+      "room": "104",
+      "teacher": "Sass",
+      "status": "scheduled",
+      "tags": ["Club robotique"]
+    },
+    {
+      "id": "s21",
+      "courseCode": "IRT31",
+      "type": "TD",
+      "day": "samedi",
+      "timeSlot": 0,
+      "room": "",
+      "teacher": "Abderrahmane",
+      "status": "online",
+      "tags": ["En ligne"]
+    },
+    {
+      "id": "s22",
+      "courseCode": "IRT31",
+      "type": "TD",
+      "day": "samedi",
+      "timeSlot": 1,
+      "room": "",
+      "teacher": "Abderrahmane",
+      "status": "online",
+      "tags": ["En ligne"]
+    }
+  ]
+}
