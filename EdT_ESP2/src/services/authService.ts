@@ -1,6 +1,5 @@
 import api, { setToken, removeToken } from "./api";
 import type {
-  RegisterRequest,
   LoginRequest,
   AuthResponse,
   UserDto,
@@ -9,12 +8,6 @@ import type {
 const AUTH_BASE = "/auth";
 
 export const authService = {
-  // Inscription
-  register: async (data: RegisterRequest): Promise<UserDto> => {
-    const response = await api.post<UserDto>(`${AUTH_BASE}/register`, data);
-    return response.data;
-  },
-
   // Connexion
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>(`${AUTH_BASE}/login`, data);
@@ -27,6 +20,15 @@ export const authService = {
   // Profil connecté
   me: async (): Promise<UserDto> => {
     const response = await api.get<UserDto>(`${AUTH_BASE}/me`);
+    return response.data;
+  },
+
+  // Changement de mot de passe (premier login)
+  changePassword: async (currentPassword: string, newPassword: string): Promise<UserDto> => {
+    const response = await api.post<UserDto>(`${AUTH_BASE}/change-password`, {
+      currentPassword,
+      newPassword,
+    });
     return response.data;
   },
 

@@ -16,7 +16,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // Public routes that don't require auth
-const PUBLIC_ROUTES = ["/login", "/register"];
+const PUBLIC_ROUTES = ["/login"];
+
+// Routes allowed even when mustChangePassword is true
+const CHANGE_PASSWORD_ROUTE = "/change-password";
 
 // Role → default landing page
 const ROLE_LANDING: Record<string, string> = {
@@ -64,17 +67,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isLoading) return;
 
     const isPublic = PUBLIC_ROUTES.includes(location.pathname);
+    const isChangePassword = location.pathname === CHANGE_PASSWORD_ROUTE;
 
     if (!isLoggedIn && !isPublic) {
       // Not logged in and trying to access a protected route
       navigate("/login", { replace: true });
+      return;
     }
-  }, [isLoading, isLoggedIn, location.pathname, navigate]);
+
+    if (isLoggedIn && user?.mustChangePassword) {
+      // User must change their password first
+      if (!isChangePassword) {
+        navigate(CHANGE_PASSWORD_ROUTE, { replace: true });
+      }
+      return;
+    }
+  }, [isLoading, isLoggedIn, location.pathname, navigate, user]);
 
   const login = useCallback(async (email: string, password: string) => {
     await authService.login({ email, password });
     const me = await authService.me();
     setUser(me);
+
+    // If user must change password, redirect there
+    if (me.mustChangePassword) {
+      navigate(CHANGE_PASSWORD_ROUTE, { replace: true });
+      return;
+    }
 
     // Role-based redirect
     const landing = ROLE_LANDING[me.role] || "/";

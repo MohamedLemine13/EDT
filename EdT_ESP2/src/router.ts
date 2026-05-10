@@ -8,6 +8,7 @@ export type Path =
   | `/bdd`
   | `/bilan`
   | `/calendrier`
+  | `/change-password`
   | `/etudiant/calendrier`
   | `/etudiant/emploi-du-temps`
   | `/etudiant/matieres`
@@ -21,6 +22,7 @@ export type Path =
   | `/setup`
   | `/setup/complete`
   | `/test-api`
+  | `/utilisateurs`
 
 export type Params = {
   '/professeur/seances/:id': { id: string }

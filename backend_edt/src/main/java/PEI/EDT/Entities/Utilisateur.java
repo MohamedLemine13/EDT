@@ -33,6 +33,10 @@ public class Utilisateur {
     @Column(nullable = false, length = 20)
     private RoleUtilisateur role;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean mustChangePassword = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "departement_id") // nullable
     private Departement departement;

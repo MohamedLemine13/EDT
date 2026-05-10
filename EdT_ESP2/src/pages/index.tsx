@@ -584,12 +584,12 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
                                   key={seance.id}
                                   onClick={() => { setSelectedSeance(seance); setIsDetailOpen(true); }}
                                   className={`h-full block p-2 rounded-md text-xs cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
-                                    seance.statut === "REALISEE"
-                                      ? "bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800"
-                                      : seance.statut === "ANNULEE"
-                                      ? "bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 opacity-60"
-                                      : "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                                  }`}
+                                    type === "DEP"
+                                      ? "bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700"
+                                      : type === "HE" || type === "ST"
+                                      ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700"
+                                      : "bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700"
+                                  } ${seance.statut === "ANNULEE" ? "opacity-60" : ""}`}
                                 >
                                   <div className="flex items-center justify-between mb-1">
                                     {getTypeBadge(seance.type)}

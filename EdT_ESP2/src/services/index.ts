@@ -20,6 +20,7 @@ export { default as seanceService } from "./seanceService";
 export { default as edtService } from "./edtService";
 export { default as calendrierService } from "./calendrierService";
 export { default as bilanService } from "./bilanService";
+export { default as userService } from "./userService";
 
 // Service de setup (localStorage - pour démo/mock)
 export * from "./setupService";

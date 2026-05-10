@@ -28,8 +28,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // Only login is public (register removed, change-password requires auth)
+                        .requestMatchers("/api/auth/login").permitAll()
 
                         // Swagger / OpenAPI
                         .requestMatchers(

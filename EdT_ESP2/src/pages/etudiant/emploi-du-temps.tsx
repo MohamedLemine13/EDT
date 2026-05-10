@@ -110,6 +110,13 @@ export default function EtudiantEmploiDuTemps() {
     return allSeances.filter((s) => s.jour === day && s.heureDebut === slotStart && s.heureFin === slotEnd);
   };
 
+  const findCreneauType = (day: string, start: string, end: string): string => {
+    const creneau = creneaux.find(
+      (c) => c.jour === day && c.heureDebut === start && c.heureFin === end
+    );
+    return creneau?.typeCreneau || "AUTRE";
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -241,6 +248,13 @@ export default function EtudiantEmploiDuTemps() {
                     </div>
                     {DAYS_ORDER.map((day) => {
                       const seances = getSeances(day, slot.start, slot.end);
+                      const typeCreneau = findCreneauType(day, slot.start, slot.end);
+                      
+                      let emptyBgClass = "bg-slate-100 dark:bg-slate-800/50";
+                      if (typeCreneau === "DEP") emptyBgClass = "bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/50";
+                      else if (typeCreneau === "HE" || typeCreneau === "ST") emptyBgClass = "bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50";
+                      else if (typeCreneau !== "AUTRE") emptyBgClass = "bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800/50";
+
                       return (
                         <div key={`${day}-${slot.label}`} className="min-h-[80px]">
                           {seances.length > 0 ? (
@@ -249,12 +263,12 @@ export default function EtudiantEmploiDuTemps() {
                                 <div
                                   key={seance.id}
                                   className={`block p-2 rounded-md text-xs ${
-                                    seance.statut === "ANNULEE"
-                                      ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 opacity-60"
-                                      : seance.statut === "REALISEE"
-                                      ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-                                      : "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                                  }`}
+                                    typeCreneau === "DEP"
+                                      ? "bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700"
+                                      : typeCreneau === "HE" || typeCreneau === "ST"
+                                      ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700"
+                                      : "bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700"
+                                  } ${seance.statut === "ANNULEE" ? "opacity-60" : ""}`}
                                 >
                                   <div className="flex items-center justify-between mb-1">
                                     {getTypeBadge(seance.type)}
@@ -274,7 +288,7 @@ export default function EtudiantEmploiDuTemps() {
                               ))}
                             </div>
                           ) : (
-                            <div className="h-full min-h-[60px] bg-slate-100 dark:bg-slate-800/50 rounded-md" />
+                            <div className={`h-full min-h-[60px] rounded-md ${emptyBgClass}`} />
                           )}
                         </div>
                       );

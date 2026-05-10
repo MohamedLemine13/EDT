@@ -347,15 +347,6 @@ export interface EdtResponse {
 
 export type UserRole = "ADMIN" | "ETUDIANT" | "PROFESSEUR" | "CHEF_DEP" | "CHEF_HE" | "CHEF_ST";
 
-export interface RegisterRequest {
-  nom?: string;
-  prenom?: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  departementId?: number;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -373,6 +364,7 @@ export interface UserDto {
   email: string;
   role: string;
   departementId?: number;
+  mustChangePassword: boolean;
 }
 
 // ==========================================

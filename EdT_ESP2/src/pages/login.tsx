@@ -155,29 +155,29 @@ export default function LoginPage() {
                 </div>
               )}
               
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-3">
+                <Label htmlFor="email" className="text-base font-semibold text-gray-900">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="admin@esp.mr"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={errors.email ? "border-red-500" : ""}
+                  className={`h-12 text-base text-gray-900 placeholder:text-gray-500 ${errors.email ? "border-red-500" : ""}`}
                   disabled={isLoading}
                 />
                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
+              <div className="space-y-3">
+                <Label htmlFor="password" className="text-base font-semibold text-gray-900">Mot de passe</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={errors.password ? "border-red-500" : ""}
+                  className={`h-12 text-base text-gray-900 placeholder:text-gray-500 ${errors.password ? "border-red-500" : ""}`}
                   disabled={isLoading}
                 />
                 {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
@@ -198,28 +198,7 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="bg-white/95 px-4 text-xs text-gray-500 uppercase tracking-wider">
-                  ou
-                </span>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => navigate("/register")}
-              className="w-full"
-              disabled={isLoading}
-            >
-              Créer un compte
-            </Button>
-          </CardContent>
+            </CardContent>
 
           <CardFooter className="flex flex-col items-center pt-6 pb-8 space-y-4">
             <p className="text-xs text-gray-500 text-center">

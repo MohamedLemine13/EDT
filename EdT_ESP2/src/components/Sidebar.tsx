@@ -8,6 +8,7 @@ import {
   Settings,
   GraduationCap,
   UserCircle,
+  Users,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 const adminModules = [
   { title: "Configuration", to: "/setup", icon: Settings },
   { title: "Base de Données", to: "/bdd", icon: BookOpen },
+  { title: "Utilisateurs", to: "/utilisateurs", icon: Users, adminOnly: true },
   { title: "Emploi du Temps", to: "/", icon: Clock },
   { title: "Calendrier", to: "/calendrier", icon: Calendar },
   { title: "Plan", to: "/plan", icon: LayoutGrid },
@@ -65,7 +67,9 @@ export default function Sidebar() {
               Menu
             </p>
             <ul className="space-y-1">
-              {adminModules.map(({ title, to, icon: Icon }) => {
+              {adminModules
+                .filter((m) => !(m as { adminOnly?: boolean }).adminOnly || role === "ADMIN")
+                .map(({ title, to, icon: Icon }) => {
                 const active = isActive(to);
                 return (
                   <li key={to}>

@@ -12,4 +12,5 @@ public class UserDto {
     private String email;
     private String role;
     private Integer departementId; // nullable
+    private boolean mustChangePassword;
 }

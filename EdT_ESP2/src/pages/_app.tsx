@@ -96,7 +96,7 @@ function LayoutContent() {
     setNewSchedule(newSchedule);
   };
 
-  const isLoginPage = location.pathname === "/login";
+  const isFullscreenPage = location.pathname === "/login" || location.pathname === "/change-password";
   const dateRange = getWeekDateRange(week);
 
   return (
@@ -110,7 +110,7 @@ function LayoutContent() {
         setWeek: handleWeekChange,
       }}
     >
-      {isLoginPage ? (
+      {isFullscreenPage ? (
         <main className="min-h-screen">
           <ErrorBoundary>
             <Suspense fallback={<PageLoadingSkeleton />}>
