@@ -11,9 +11,13 @@ export const affectationService = {
   },
 
   // Liste des affectations par semestre et département
-  getAll: async (semestreId: number, departementId: number): Promise<AffectationEnseignementDto[]> => {
+  getAll: async (semestreId: number, departementId?: number): Promise<AffectationEnseignementDto[]> => {
+    const params: any = { semestreId };
+    if (departementId && departementId !== -1) {
+      params.departementId = departementId;
+    }
     const response = await api.get<AffectationEnseignementDto[]>(AFFECTATIONS_BASE, {
-      params: { semestreId, departementId },
+      params
     });
     return response.data;
   },

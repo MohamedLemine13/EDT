@@ -19,6 +19,7 @@ export interface Room {
   capacity: number;
   equipment: string[];
   building: string;
+  departmentId?: string;
 }
 
 // Course Types
@@ -26,7 +27,7 @@ export interface Course {
   code: string;
   title: string;
   credits: number;
-  coefficient: number;
+  typeMatiere?: "DEP" | "HE" | "ST";
   hours: {
     cm: number;
     td: number;
@@ -433,6 +434,8 @@ export interface SalleDto {
   typeSalle: "AMPHI" | "SALLE" | "LABO";
   ecoleId: string;
   departementId?: number;
+  capacite?: number;
+  equipements?: string;
 }
 
 export interface CreateMatiereDto {
@@ -442,6 +445,7 @@ export interface CreateMatiereDto {
   hCm: number;
   hTd: number;
   hTp: number;
+  typeMatiere?: "DEP" | "HE" | "ST";
 }
 
 export interface MatiereDto {
@@ -451,6 +455,7 @@ export interface MatiereDto {
   hCm: number;
   hTd: number;
   hTp: number;
+  typeMatiere?: "DEP" | "HE" | "ST";
 }
 
 export interface CreateSemestreDto {
@@ -522,53 +527,48 @@ export interface CreneauDto {
 
 export interface CreateAffectationEnseignementDto {
   semestreId: number;
-  departementId?: number;
-  isCommun?: boolean;
+  departementIds: number[];
   matiereCode: string;
-  type: "CM" | "TD" | "TP";
-  professeurId: number;
-  salleId: number;
+  type: "CM" | "TD" | "TP" | "DEVOIR" | "EXAMEN" | "MEETING" | "AUTRE";
+  professeurIds?: number[];
+  salleIds?: number[];
 }
 
 export interface AffectationEnseignementDto {
   id: number;
   semestreId: number;
   semestreLibelle: string;
-  departementId: number;
-  departementCode: string;
-  isCommun: boolean;
+  departementIds: number[];
+  departementCodes: string[];
   matiereCode: string;
-  type: "CM" | "TD" | "TP";
-  professeurId: number;
-  professeurNom: string;
-  professeurPrenom: string;
-  professeurStatut: "PERMANENT" | "VACATAIRE";
-  salleId: number;
-  salleNom: string;
-  typeSalle: "AMPHI" | "SALLE" | "LABO";
+  type: "CM" | "TD" | "TP" | "DEVOIR" | "EXAMEN" | "MEETING" | "AUTRE";
+  professeurIds?: number[];
+  professeurNoms?: string[];
+  salleIds?: number[];
+  salleNoms?: string[];
 }
 
 export interface CreateSeanceRequestDto {
-  type: "CM" | "TD" | "TP";
+  type: "CM" | "TD" | "TP" | "DEVOIR" | "EXAMEN" | "MEETING" | "AUTRE";
   statut?: "PLANIFIEE" | "ANNULEE" | "REALISEE";
   creneauId: number;
   matiereCode: string;
-  salleId: number;
+  salleIds?: number[];
   semaineId: number;
-  professeurId?: number;
+  professeurIds?: number[];
   isCommun?: boolean;
   tag?: string;
   departementIds: number[];
 }
 
 export interface UpdateSeanceRequestDto {
-  type?: "CM" | "TD" | "TP";
+  type?: "CM" | "TD" | "TP" | "DEVOIR" | "EXAMEN" | "MEETING" | "AUTRE";
   statut?: "PLANIFIEE" | "ANNULEE" | "REALISEE";
   creneauId?: number;
   matiereCode?: string;
-  salleId?: number;
+  salleIds?: number[];
   semaineId?: number;
-  professeurId?: number;
+  professeurIds?: number[];
   isCommun?: boolean;
   tag?: string;
   departementIds?: number[];
@@ -576,7 +576,7 @@ export interface UpdateSeanceRequestDto {
 
 export interface SeanceDto {
   id: number;
-  type: "CM" | "TD" | "TP";
+  type: "CM" | "TD" | "TP" | "DEVOIR" | "EXAMEN" | "MEETING" | "AUTRE";
   statut: "PLANIFIEE" | "ANNULEE" | "REALISEE";
   jour: "LUNDI" | "MARDI" | "MERCREDI" | "JEUDI" | "VENDREDI" | "SAMEDI";
   heureDebut: string;
@@ -584,12 +584,10 @@ export interface SeanceDto {
   typeCreneau: "HE" | "ST" | "DEP" | "AUTRE";
   matiereCode: string;
   matiereIntitule: string;
-  professeurId: number;
-  professeurNom: string;
-  professeurPrenom: string;
-  salleId: number;
-  salleNom: string;
-  typeSalle: "AMPHI" | "SALLE" | "LABO";
+  professeurIds: number[];
+  professeurNoms: string[];
+  salleIds: number[];
+  salleNoms: string[];
   semaineId: number;
   numeroSemaine: number;
   tag?: string;

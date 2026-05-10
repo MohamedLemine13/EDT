@@ -1,7 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { X } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Teacher } from '@/types'
 import { generateId } from '@/hooks/useDataStore'
 
@@ -25,19 +25,16 @@ interface TeacherFormProps {
 const defaultTeacher: Teacher = {
   id: '',
   name: '',
-  department: 'IRT',
+  department: 'PERMANENT',
   email: '',
   courses: [],
 }
 
 export function TeacherForm({ teacher, isOpen, onClose, onSave, mode }: TeacherFormProps) {
   const [formData, setFormData] = useState<Teacher>(teacher || { ...defaultTeacher, id: generateId('t') })
-  const [newCourse, setNewCourse] = useState('')
 
-  // Reset form when teacher changes
   useEffect(() => {
     setFormData(teacher || { ...defaultTeacher, id: generateId('t') })
-    setNewCourse('')
   }, [teacher, isOpen])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -48,30 +45,6 @@ export function TeacherForm({ teacher, isOpen, onClose, onSave, mode }: TeacherF
 
   const updateField = <K extends keyof Teacher>(field: K, value: Teacher[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const addCourse = () => {
-    if (newCourse.trim() && !formData.courses.includes(newCourse.trim().toUpperCase())) {
-      setFormData((prev) => ({
-        ...prev,
-        courses: [...prev.courses, newCourse.trim().toUpperCase()],
-      }))
-      setNewCourse('')
-    }
-  }
-
-  const removeCourse = (courseCode: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      courses: prev.courses.filter((c) => c !== courseCode),
-    }))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addCourse()
-    }
   }
 
   return (
@@ -101,57 +74,30 @@ export function TeacherForm({ teacher, isOpen, onClose, onSave, mode }: TeacherF
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="department">Département *</Label>
-            <Input
-              id="department"
-              value={formData.department}
-              onChange={(e) => updateField('department', e.target.value)}
-              placeholder="IRT"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => updateField('email', e.target.value)}
               placeholder="ahmed@esp.mr"
-              required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Matières enseignées</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newCourse}
-                onChange={(e) => setNewCourse(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Code matière (ex: IRT31)"
-              />
-              <Button type="button" variant="outline" onClick={addCourse}>
-                Ajouter
-              </Button>
-            </div>
-            {formData.courses.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {formData.courses.map((code) => (
-                  <Badge key={code} variant="secondary" className="gap-1">
-                    {code}
-                    <button
-                      type="button"
-                      onClick={() => removeCourse(code)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <Label>Statut *</Label>
+            <Select
+              value={formData.department}
+              onValueChange={(value) => updateField('department', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PERMANENT">Permanent</SelectItem>
+                <SelectItem value="VACATAIRE">Vacataire</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>

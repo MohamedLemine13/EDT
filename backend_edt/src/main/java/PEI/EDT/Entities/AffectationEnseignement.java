@@ -5,13 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(
-        name = "affectation_enseignement",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_affectation_unique",
-                columnNames = {"semestre_id", "departement_id", "matiere_code", "type"}
-        )
-)
+@Table(name = "affectation_enseignement")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
@@ -22,32 +16,43 @@ public class AffectationEnseignement {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 5)
+    @Column(nullable = false, length = 20)
     private TypeSeance type;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "semestre_id", nullable = false)
     private Semestre semestre;
 
-    @ManyToOne(optional = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "departement_id", nullable = true)
-    private Departement departement;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "affectation_departements",
+            joinColumns = @JoinColumn(name = "affectation_id"),
+            inverseJoinColumns = @JoinColumn(name = "departement_id")
+    )
+    @Builder.Default
+    private java.util.Set<Departement> departements = new java.util.HashSet<>();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "matiere_code", nullable = false)
     private Matiere matiere;
 
-    @Column(name = "is_commun", nullable = false)
+    // ✅ Multiple professeurs (ManyToMany)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "affectation_professeurs",
+            joinColumns = @JoinColumn(name = "affectation_id"),
+            inverseJoinColumns = @JoinColumn(name = "professeur_id")
+    )
     @Builder.Default
-    private boolean isCommun = false;
+    private java.util.Set<Professeur> professeurs = new java.util.HashSet<>();
 
-
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "professeur_id", nullable = false)
-    private Professeur professeur;
-
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "salle_id", nullable = false)
-    private Salle salle;
-
+    // ✅ Multiple salles (ManyToMany)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "affectation_salles",
+            joinColumns = @JoinColumn(name = "affectation_id"),
+            inverseJoinColumns = @JoinColumn(name = "salle_id")
+    )
+    @Builder.Default
+    private java.util.Set<Salle> salles = new java.util.HashSet<>();
 }

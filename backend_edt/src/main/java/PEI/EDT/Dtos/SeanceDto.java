@@ -29,14 +29,13 @@ public class SeanceDto {
     private String matiereCode;
     private String matiereIntitule;
 
-    private Integer professeurId;
-    private String professeurNom;
-    private String professeurPrenom;
+    // ✅ Multiple professors
+    private List<Integer> professeurIds;
+    private List<String> professeurNoms;
 
-    // Salle
-    private Integer salleId;
-    private String salleNom;
-    private String typeSalle;   // AMPHI | SALLE | LABO
+    // ✅ Multiple salles
+    private List<Integer> salleIds;
+    private List<String> salleNoms;
 
     // Semaine
     private Integer semaineId;

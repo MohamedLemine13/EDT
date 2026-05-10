@@ -31,10 +31,7 @@ public class SemaineAcademiqueService {
         Semestre semestre = semestreRepo.findById(dto.getSemestreId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semestre not found: " + dto.getSemestreId()));
 
-        // Optional consistency: keep week inside semester dates
-        if (dto.getDateDebut().isBefore(semestre.getDateDebut()) || dto.getDateFin().isAfter(semestre.getDateFin())) {
-            throw new BadRequestException("Week dates must be within the Semestre date range.");
-        }
+        // Removed strict consistency check to allow week boundaries to slightly overlap the semester boundaries
 
         SemaineAcademique s = SemaineAcademique.builder()
                 .numeroSemaine(dto.getNumeroSemaine())
@@ -79,10 +76,7 @@ public class SemaineAcademiqueService {
             throw new BadRequestException("Invalid week dates.");
         }
 
-        Semestre sem = s.getSemestre();
-        if (s.getDateDebut().isBefore(sem.getDateDebut()) || s.getDateFin().isAfter(sem.getDateFin())) {
-            throw new BadRequestException("Week dates must be within the Semestre date range.");
-        }
+        // Removed strict consistency check to allow week boundaries to slightly overlap the semester boundaries
 
         return toDto(semaineRepo.save(s));
     }

@@ -37,7 +37,7 @@ public class Departement {
     @Builder.Default
     private List<Salle> salles = new ArrayList<>();
 
-    @OneToMany(mappedBy = "departement", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ManyToMany(mappedBy = "departements", fetch = FetchType.LAZY)
     @Builder.Default
     private List<AffectationEnseignement> affectations = new ArrayList<>();
 

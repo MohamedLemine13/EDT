@@ -101,7 +101,7 @@ export default function ProfesseurSeances() {
         searchQuery === "" ||
         seance.matiereCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
         seance.matiereIntitule?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        seance.salleNom?.toLowerCase().includes(searchQuery.toLowerCase());
+        seance.salleNoms?.join(", ").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === "all" || seance.statut === statusFilter;
       const matchesType = typeFilter === "all" || seance.type === typeFilter;
@@ -295,7 +295,7 @@ export default function ProfesseurSeances() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-muted-foreground" />
-                          {seance.salleNom}
+                          {seance.salleNoms?.join(", ")}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(seance.statut)}</TableCell>
@@ -365,7 +365,7 @@ export default function ProfesseurSeances() {
                 </div>
                 <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
                   <span className="text-sm text-muted-foreground">Salle</span>
-                  <span className="font-medium text-right">{selectedSeance.salleNom}</span>
+                  <span className="font-medium text-right">{selectedSeance.salleNoms?.join(", ")}</span>
                 </div>
               </div>
 

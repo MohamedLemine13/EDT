@@ -45,11 +45,13 @@ public class BilanController {
 
         // Get all affectations for this dept + semester (DEP-specific)
         List<AffectationEnseignement> depAffectations = affectationRepo
-                .findBySemestre_IdAndDepartement_Id(semestreId, departementId);
+                .findBySemestre_IdAndDepartements_Id(semestreId, departementId);
 
-        // Also get common affectations (isCommun=true)
+        // Also get common affectations (empty departements)
         List<AffectationEnseignement> communAffectations = affectationRepo
-                .findBySemestre_IdAndIsCommunTrue(semestreId);
+                .findBySemestre_Id(semestreId).stream()
+                .filter(a -> a.getDepartements().size() != 1)
+                .toList();
 
         // Combine and group by matière code
         List<AffectationEnseignement> allAffectations = new ArrayList<>();
@@ -128,8 +130,8 @@ public class BilanController {
             courses.add(BilanMatiereDto.builder()
                     .matiereCode(matiereCode)
                     .matiereIntitule(matiere.getIntitule())
-                    .professeurNom(primaryAff.getProfesseur().getNom())
-                    .professeurPrenom(primaryAff.getProfesseur().getPrenom())
+                    .professeurNom(!primaryAff.getProfesseurs().isEmpty() ? primaryAff.getProfesseurs().iterator().next().getNom() : "Non défini")
+                    .professeurPrenom(!primaryAff.getProfesseurs().isEmpty() ? primaryAff.getProfesseurs().iterator().next().getPrenom() : "")
                     .planned(HoursDto.builder().cm(plannedCm).td(plannedTd).tp(plannedTp).build())
                     .completed(HoursDto.builder().cm(cCm).td(cTd).tp(cTp).build())
                     .build());

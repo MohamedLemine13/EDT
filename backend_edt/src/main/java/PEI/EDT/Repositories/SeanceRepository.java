@@ -25,7 +25,7 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
             @Param("semaineId") Integer semaineId
     );
 
-    @EntityGraph(attributePaths = {"creneau", "matiere", "salle", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
+    @EntityGraph(attributePaths = {"creneau", "matiere", "salles", "professeurs", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
     @Query("""
         select distinct s
         from Seance s
@@ -40,8 +40,8 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
             @Param("semaineId") Integer semaineId
     );
 
-    // ✅ Collision checks (create)
-    boolean existsBySalle_IdAndCreneau_IdAndSemaineAcademique_Id(
+    // ✅ Collision checks using ManyToMany join tables
+    boolean existsBySalles_IdAndCreneau_IdAndSemaineAcademique_Id(
             Integer salleId,
             Integer creneauId,
             Integer semaineId
@@ -54,7 +54,7 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
     );
 
     // ✅ Collision checks (update: exclude current seance)
-    boolean existsBySalle_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+    boolean existsBySalles_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
             Integer salleId,
             Integer creneauId,
             Integer semaineId,
@@ -68,25 +68,24 @@ public interface SeanceRepository extends JpaRepository<Seance, Integer> {
             Integer excludeSeanceId
     );
 
-    boolean existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_Id(
+    // ✅ Professor collision via ManyToMany
+    boolean existsByProfesseurs_IdAndCreneau_IdAndSemaineAcademique_Id(
             Integer professeurId,
             Integer creneauId,
             Integer semaineId
     );
 
-    boolean existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+    boolean existsByProfesseurs_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
             Integer professeurId,
             Integer creneauId,
             Integer semaineId,
             Integer excludeSeanceId
     );
 
-
-    // ✅ For professeur collision: load seances of same slot with joins
-    @EntityGraph(attributePaths = {"creneau", "matiere", "salle", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
-    List<Seance> findByCreneau_IdAndSemaineAcademique_Id(Integer creneauId, Integer semaineId);
-
     // ✅ For professor endpoint: load seances by professor with all relations
-    @EntityGraph(attributePaths = {"creneau", "matiere", "salle", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
-    List<Seance> findByProfesseur_Id(Integer professeurId);
+    @EntityGraph(attributePaths = {"creneau", "matiere", "salles", "professeurs", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
+    List<Seance> findByProfesseurs_Id(Integer professeurId);
+
+    @EntityGraph(attributePaths = {"creneau", "matiere", "salles", "professeurs", "semaineAcademique", "seanceDepartements", "seanceDepartements.departement"})
+    List<Seance> findByCreneau_IdAndSemaineAcademique_Id(Integer creneauId, Integer semaineId);
 }

@@ -21,7 +21,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -33,92 +38,67 @@ public class AffectationEnseignementService {
     private final DepartementRepository departementRepo;
     private final MatiereRepository matiereRepo;
     private final ProfesseurRepository professeurRepo;
-    private final SalleRepository salleRepo; // ✅ NEW
+    private final SalleRepository salleRepo;
 
     public AffectationEnseignementDto upsert(CreateAffectationEnseignementDto dto) {
 
         if (dto.getSemestreId() == null
                 || dto.getMatiereCode() == null
-                || dto.getType() == null
-                || dto.getProfesseurId() == null
-                || dto.getSalleId() == null) {
-            throw new BadRequestException("semestreId, matiereCode, type, professeurId, salleId are required.");
+                || dto.getType() == null) {
+            throw new BadRequestException("semestreId, matiereCode, and type are required.");
         }
-
-        boolean isCommun = Boolean.TRUE.equals(dto.getIsCommun());
-
-// departementId rule depends on isCommun
-        if (isCommun) {
-            if (dto.getDepartementId() != null) {
-                throw new BadRequestException("When isCommun=true, departementId must be null.");
-            }
-        } else {
-            if (dto.getDepartementId() == null) {
-                throw new BadRequestException("When isCommun=false (or missing), departementId is required.");
-            }
-        }
-
 
         TypeSeance type = parseTypeSeance(dto.getType());
 
         Semestre semestre = semestreRepo.findById(dto.getSemestreId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semestre not found: " + dto.getSemestreId()));
 
-        Departement departement = null;
-
         Matiere matiere = matiereRepo.findById(dto.getMatiereCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Matiere not found: " + dto.getMatiereCode()));
 
-        Professeur professeur = professeurRepo.findById(dto.getProfesseurId())
-                .orElseThrow(() -> new ResourceNotFoundException("Professeur not found: " + dto.getProfesseurId()));
-
-        Salle salle = salleRepo.findById(dto.getSalleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Salle not found: " + dto.getSalleId()));
-
-        if (isCommun) {
-            // Commun affectation => salle should be AMPHI (department-less)
-            if (salle.getDepartement() != null) {
-                throw new BadRequestException("When isCommun=true, salle must be common (departement must be null). Use an AMPHI salle.");
+        // ✅ Resolve multiple professeurs
+        Set<Professeur> professeurs = new HashSet<>();
+        if (dto.getProfesseurIds() != null && !dto.getProfesseurIds().isEmpty()) {
+            List<Professeur> profList = professeurRepo.findAllById(dto.getProfesseurIds());
+            if (profList.size() != dto.getProfesseurIds().size()) {
+                throw new BadRequestException("One or more professeurs not found.");
             }
-        } else {
-            // Department affectation => salle must belong to same department
-            if (salle.getDepartement() == null || salle.getDepartement().getId() == null) {
-                throw new BadRequestException("Salle must be attached to a Departement.");
-            }
+            professeurs = new HashSet<>(profList);
         }
 
-
-        AffectationEnseignement affectation;
-
-        if (isCommun) {
-            affectation = affectationRepo
-                    .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
-                            semestre.getId(), matiere.getCode(), type
-                    )
-                    .orElseGet(AffectationEnseignement::new);
-        } else {
-            Departement dept = departementRepo.findById(dto.getDepartementId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + dto.getDepartementId()));
-            if (!salle.getDepartement().getId().equals(dept.getId())) {
-                throw new BadRequestException("Salle must belong to the same Departement as the affectation.");
+        // ✅ Resolve multiple salles
+        Set<Salle> salles = new HashSet<>();
+        if (dto.getSalleIds() != null && !dto.getSalleIds().isEmpty()) {
+            List<Salle> salleList = salleRepo.findAllById(dto.getSalleIds());
+            if (salleList.size() != dto.getSalleIds().size()) {
+                throw new BadRequestException("One or more salles not found.");
             }
-            affectation = affectationRepo
-                    .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
-                            semestre.getId(), dept.getId(), matiere.getCode(), type
-                    )
-                    .orElseGet(AffectationEnseignement::new);
-            departement = dept;
+            salles = new HashSet<>(salleList);
         }
 
+        // Resolve departments
+        Set<Departement> departements = new HashSet<>();
+        if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty()) {
+            List<Departement> deptList = departementRepo.findAllById(dto.getDepartementIds());
+            if (deptList.size() != dto.getDepartementIds().size()) {
+                throw new BadRequestException("One or more departements not found.");
+            }
+            departements = new HashSet<>(deptList);
+        }
+
+        // Upsert: find by semestre, matiere, type
+        AffectationEnseignement affectation = affectationRepo
+                .findBySemestre_IdAndMatiere_CodeAndType(semestre.getId(), matiere.getCode(), type)
+                .stream()
+                .findFirst()
+                .orElseGet(AffectationEnseignement::new);
 
         affectation.setSemestre(semestre);
-        affectation.setCommun(isCommun);
-        affectation.setDepartement(isCommun ? null : departement);
+        affectation.setDepartements(departements);
         affectation.setMatiere(matiere);
         affectation.setType(type);
-        affectation.setProfesseur(professeur);
-        affectation.setSalle(salle);
-
+        affectation.setProfesseurs(professeurs);
+        affectation.setSalles(salles);
 
         AffectationEnseignement saved = affectationRepo.save(affectation);
         return toDto(saved);
@@ -126,18 +106,32 @@ public class AffectationEnseignementService {
 
     @Transactional(readOnly = true)
     public List<AffectationEnseignementDto> listBySemestreAndDepartement(Integer semestreId, Integer departementId) {
-        if (semestreId == null || departementId == null) {
-            throw new BadRequestException("semestreId and departementId are required.");
+        if (semestreId == null) {
+            throw new BadRequestException("semestreId is required.");
         }
-        return affectationRepo.findBySemestre_IdAndDepartement_Id(semestreId, departementId)
-                .stream()
+        if (departementId == null) {
+            return affectationRepo.findBySemestre_Id(semestreId)
+                    .stream()
+                    .map(this::toDto)
+                    .toList();
+        }
+        // ✅ Merge department-specific affectations WITH common ones (empty departements)
+        List<AffectationEnseignement> deptSpecific = affectationRepo.findBySemestre_IdAndDepartements_Id(semestreId, departementId);
+        List<AffectationEnseignement> common = affectationRepo.findCommonBySemestreId(semestreId);
+
+        // Combine and deduplicate by ID
+        Map<Integer, AffectationEnseignement> merged = new LinkedHashMap<>();
+        for (AffectationEnseignement a : deptSpecific) merged.put(a.getId(), a);
+        for (AffectationEnseignement a : common) merged.put(a.getId(), a);
+
+        return merged.values().stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<AffectationEnseignementDto> listByProfesseurAndSemestre(Integer professeurId, Integer semestreId) {
-        return affectationRepo.findByProfesseur_IdAndSemestre_Id(professeurId, semestreId)
+        return affectationRepo.findByProfesseurs_IdAndSemestre_Id(professeurId, semestreId)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -145,7 +139,7 @@ public class AffectationEnseignementService {
 
     @Transactional(readOnly = true)
     public List<AffectationEnseignementDto> listByProfesseur(Integer professeurId) {
-        return affectationRepo.findByProfesseur_Id(professeurId)
+        return affectationRepo.findByProfesseurs_Id(professeurId)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -165,32 +159,34 @@ public class AffectationEnseignementService {
                 .semestreId(a.getSemestre().getId())
                 .semestreLibelle(a.getSemestre().getLibelle())
 
-                .isCommun(a.isCommun())
-
-                .departementId(a.getDepartement() == null ? null : a.getDepartement().getId())
-                .departementCode(a.getDepartement() == null ? null : a.getDepartement().getCode())
-
+                .departementIds(a.getDepartements() == null ? new ArrayList<>() : a.getDepartements().stream().map(Departement::getId).toList())
+                .departementCodes(a.getDepartements() == null ? new ArrayList<>() : a.getDepartements().stream().map(Departement::getCode).toList())
 
                 .matiereCode(a.getMatiere().getCode())
                 .type(a.getType().name())
 
-                .professeurId(a.getProfesseur().getId())
-                .professeurNom(a.getProfesseur().getNom())
-                .professeurPrenom(a.getProfesseur().getPrenom())
-                .professeurStatut(a.getProfesseur().getStatut().name())
+                // ✅ Multiple professors
+                .professeurIds(a.getProfesseurs() == null ? new ArrayList<>() : a.getProfesseurs().stream().map(Professeur::getId).toList())
+                .professeurNoms(a.getProfesseurs() == null ? new ArrayList<>() : a.getProfesseurs().stream()
+                        .map(p -> p.getPrenom() + " " + p.getNom())
+                        .toList())
 
-                // ✅ NEW: salle info
-                .salleId(a.getSalle().getId())
-                .salleNom(a.getSalle().getNom())
-                .typeSalle(a.getSalle().getTypeSalle().name())
+                // ✅ Multiple salles
+                .salleIds(a.getSalles() == null ? new ArrayList<>() : a.getSalles().stream().map(Salle::getId).toList())
+                .salleNoms(a.getSalles() == null ? new ArrayList<>() : a.getSalles().stream().map(Salle::getNom).toList())
+
                 .build();
     }
+
+    // ✅ Professeur queries now use the ManyToMany join table
+    // The repository methods findByProfesseur_IdAndSemestre_Id and findByProfesseur_Id
+    // need to be updated to use the new relationship name "professeurs"
 
     private TypeSeance parseTypeSeance(String s) {
         try {
             return TypeSeance.valueOf(s.trim().toUpperCase());
         } catch (Exception e) {
-            throw new BadRequestException("Invalid type (expected CM|TD|TP): " + s);
+            throw new BadRequestException("Invalid type: " + s);
         }
     }
 }

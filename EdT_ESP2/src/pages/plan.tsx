@@ -82,8 +82,8 @@ export default function PlanPage() {
   const [seances, setSeances] = useState<SeanceDto[]>([])
   const [departments, setDepartments] = useState<DepartementDto[]>([])
   const [matieres, setMatieres] = useState<MatiereDto[]>([])
-  const [professeurs, setProfesseurs] = useState<ProfesseurDto[]>([])
-  const [salles, setSalles] = useState<SalleDto[]>([])
+  const [, setProfesseurs] = useState<ProfesseurDto[]>([])
+  const [, setSalles] = useState<SalleDto[]>([])
   const [affectations, setAffectations] = useState<AffectationEnseignementDto[]>([])
   const [calendarEvents, setCalendarEvents] = useState<EvenementCalendrierDto[]>([])
 
@@ -96,7 +96,7 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null)
   const [highlightedCourse, setHighlightedCourse] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<string>('matrix')
-  const [saving, setSaving] = useState(false)
+  const [, setSaving] = useState(false)
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -248,11 +248,6 @@ export default function PlanPage() {
     navigate(`/?week=${week}`)
   }
 
-  // Handle empty cell click
-  const handleEmptyCellClick = (_entry: PlanningEntry) => {
-    // This is called from PlanningMatrix when a cell is clicked
-    // The entry has week, day, slot info
-  }
 
   // Handle add from the PlanningMatrix (old interface)
   const handleAddEntry = (entry: PlanningEntry) => {
@@ -265,8 +260,8 @@ export default function PlanPage() {
   const handleCreateSeance = async (data: {
     matiereCode: string
     type: string
-    professeurId: number
-    salleId: number
+    professeurIds?: number[]
+    salleIds?: number[]
     tag?: string
     isCommun: boolean
     departementIds: number[]
@@ -288,9 +283,9 @@ export default function PlanPage() {
         statut: 'PLANIFIEE',
         creneauId,
         matiereCode: data.matiereCode,
-        salleId: data.salleId,
-        semaineId,
-        professeurId: data.professeurId,
+        salleIds: data.salleIds,
+        semaineId: semaineId,
+        professeurIds: data.professeurIds,
         isCommun: data.isCommun,
         tag: data.tag,
         departementIds: data.departementIds,
@@ -563,10 +558,10 @@ export default function PlanPage() {
               handleCreateSeance({
                 matiereCode: code,
                 type,
-                professeurId: aff.professeurId,
-                salleId: aff.salleId,
-                isCommun: aff.isCommun,
-                departementIds: aff.isCommun ? [] : [Number(selectedDept)],
+                professeurIds: aff.professeurIds,
+                salleIds: aff.salleIds,
+                isCommun: aff.departementIds.length !== 1,
+                departementIds: aff.departementIds.length !== 1 ? [] : [Number(selectedDept)],
               })
             }
           }

@@ -3,36 +3,38 @@ package PEI.EDT.Repositories;
 import PEI.EDT.Entities.AffectationEnseignement;
 import PEI.EDT.Entities.Enums.TypeSeance;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface AffectationEnseignementRepository extends JpaRepository<AffectationEnseignement, Integer> {
 
-    Optional<AffectationEnseignement> findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
+    List<AffectationEnseignement> findBySemestre_IdAndDepartements_IdAndMatiere_CodeAndType(
             Integer semestreId,
             Integer departementId,
             String matiereCode,
             TypeSeance type
     );
 
-    Optional<AffectationEnseignement> findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+    List<AffectationEnseignement> findBySemestre_IdAndMatiere_CodeAndType(
             Integer semestreId,
             String matiereCode,
             TypeSeance type
     );
 
+    List<AffectationEnseignement> findBySemestre_IdAndDepartements_Id(Integer semestreId, Integer departementId);
 
-    List<AffectationEnseignement> findBySemestre_IdAndDepartement_Id(Integer semestreId, Integer departementId);
+    List<AffectationEnseignement> findBySemestre_Id(Integer semestreId);
 
-    // ✅ Pour le professeur connecté: voir ses affectations
-    List<AffectationEnseignement> findByProfesseur_IdAndSemestre_Id(Integer professeurId, Integer semestreId);
+    // ✅ Find common affectations (those with NO departments in the junction table)
+    @Query("SELECT a FROM AffectationEnseignement a WHERE a.semestre.id = :semestreId AND a.departements IS EMPTY")
+    List<AffectationEnseignement> findCommonBySemestreId(Integer semestreId);
 
-    List<AffectationEnseignement> findByProfesseur_Id(Integer professeurId);
+    // ✅ Pour le professeur connecté: via ManyToMany join
+    List<AffectationEnseignement> findByProfesseurs_IdAndSemestre_Id(Integer professeurId, Integer semestreId);
+
+    List<AffectationEnseignement> findByProfesseurs_Id(Integer professeurId);
 
     // ✅ Pour les matières par département: via les affectations
-    List<AffectationEnseignement> findByDepartement_Id(Integer departementId);
-
-    // ✅ Pour le bilan: toutes les affectations communes d'un semestre
-    List<AffectationEnseignement> findBySemestre_IdAndIsCommunTrue(Integer semestreId);
+    List<AffectationEnseignement> findByDepartements_Id(Integer departementId);
 }

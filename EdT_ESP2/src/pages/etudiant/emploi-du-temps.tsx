@@ -264,11 +264,11 @@ export default function EtudiantEmploiDuTemps() {
                                   <p className="text-muted-foreground truncate text-[10px]">{seance.matiereIntitule}</p>
                                   <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                                     <User className="w-3 h-3" />
-                                    {seance.professeurPrenom} {seance.professeurNom}
+                                    {seance.professeurNoms?.join(", ")}
                                   </div>
                                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                     <MapPin className="w-3 h-3" />
-                                    {seance.salleNom}
+                                    {seance.salleNoms?.join(", ")}
                                   </div>
                                 </div>
                               ))}

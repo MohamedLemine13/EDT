@@ -4,8 +4,8 @@ import PEI.EDT.Entities.Enums.StatutProfesseur;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "professeur")
@@ -31,7 +31,7 @@ public class Professeur {
     @Column(length = 100)
     private String email;
 
-    @OneToMany(mappedBy = "professeur", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ManyToMany(mappedBy = "professeurs")
     @Builder.Default
-    private List<AffectationEnseignement> affectations = new ArrayList<>();
+    private Set<AffectationEnseignement> affectations = new HashSet<>();
 }

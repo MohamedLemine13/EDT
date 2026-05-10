@@ -23,7 +23,6 @@ const defaultCourse: Course = {
   code: '',
   title: '',
   credits: 3,
-  coefficient: 2,
   hours: { cm: 10, td: 10, tp: 10, total: 30 },
   teachers: { cm: '', td: '', tp: '' },
   rooms: { cm: '', td: '', tp: '' },
@@ -55,19 +54,6 @@ export function CourseForm({ course, isOpen, onClose, onSave, mode }: CourseForm
     }))
   }
 
-  const updateTeacher = (type: 'cm' | 'td' | 'tp', value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      teachers: { ...prev.teachers, [type]: value },
-    }))
-  }
-
-  const updateRoom = (type: 'cm' | 'td' | 'tp', value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      rooms: { ...prev.rooms, [type]: value },
-    }))
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -121,15 +107,18 @@ export function CourseForm({ course, isOpen, onClose, onSave, mode }: CourseForm
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="coefficient">Coefficient</Label>
-              <Input
-                id="coefficient"
-                type="number"
-                min={1}
-                max={10}
-                value={formData.coefficient}
-                onChange={(e) => updateField('coefficient', parseInt(e.target.value) || 0)}
-              />
+              <Label htmlFor="typeMatiere">Type de Matière</Label>
+              <select
+                id="typeMatiere"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.typeMatiere || ''}
+                onChange={(e) => updateField('typeMatiere', e.target.value as any)}
+              >
+                <option value="">Sélectionner un type...</option>
+                <option value="DEP">DEP — Département</option>
+                <option value="HE">HE — Humanités</option>
+                <option value="ST">ST — Sciences Techniques</option>
+              </select>
             </div>
           </div>
 
@@ -170,73 +159,7 @@ export function CourseForm({ course, isOpen, onClose, onSave, mode }: CourseForm
             </div>
           </div>
 
-          {/* Teachers */}
-          <div className="space-y-2">
-            <Label>Enseignants</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label htmlFor="teacher-cm" className="text-xs text-muted-foreground">CM</Label>
-                <Input
-                  id="teacher-cm"
-                  value={formData.teachers.cm}
-                  onChange={(e) => updateTeacher('cm', e.target.value)}
-                  placeholder="Nom"
-                />
-              </div>
-              <div>
-                <Label htmlFor="teacher-td" className="text-xs text-muted-foreground">TD</Label>
-                <Input
-                  id="teacher-td"
-                  value={formData.teachers.td}
-                  onChange={(e) => updateTeacher('td', e.target.value)}
-                  placeholder="Nom"
-                />
-              </div>
-              <div>
-                <Label htmlFor="teacher-tp" className="text-xs text-muted-foreground">TP</Label>
-                <Input
-                  id="teacher-tp"
-                  value={formData.teachers.tp}
-                  onChange={(e) => updateTeacher('tp', e.target.value)}
-                  placeholder="Nom"
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Rooms */}
-          <div className="space-y-2">
-            <Label>Salles</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label htmlFor="room-cm" className="text-xs text-muted-foreground">CM</Label>
-                <Input
-                  id="room-cm"
-                  value={formData.rooms.cm}
-                  onChange={(e) => updateRoom('cm', e.target.value)}
-                  placeholder="Salle"
-                />
-              </div>
-              <div>
-                <Label htmlFor="room-td" className="text-xs text-muted-foreground">TD</Label>
-                <Input
-                  id="room-td"
-                  value={formData.rooms.td}
-                  onChange={(e) => updateRoom('td', e.target.value)}
-                  placeholder="Salle"
-                />
-              </div>
-              <div>
-                <Label htmlFor="room-tp" className="text-xs text-muted-foreground">TP</Label>
-                <Input
-                  id="room-tp"
-                  value={formData.rooms.tp}
-                  onChange={(e) => updateRoom('tp', e.target.value)}
-                  placeholder="Salle"
-                />
-              </div>
-            </div>
-          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

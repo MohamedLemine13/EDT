@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { X } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Room } from '@/types'
 import { generateId } from '@/hooks/useDataStore'
 
@@ -20,6 +21,7 @@ interface RoomFormProps {
   onClose: () => void
   onSave: (room: Room) => void
   mode: 'create' | 'edit'
+  departments?: { id: number; code: string }[]
 }
 
 const defaultRoom: Room = {
@@ -28,23 +30,31 @@ const defaultRoom: Room = {
   name: '',
   capacity: 30,
   equipment: [],
-  building: 'Bâtiment principal',
+  building: 'SALLE',
 }
 
 const commonEquipment = ['Projecteur', 'Tableau blanc', 'Ordinateurs', 'Climatisation', 'WiFi', 'Audio']
 
-export function RoomForm({ room, isOpen, onClose, onSave, mode }: RoomFormProps) {
+export function RoomForm({ room, isOpen, onClose, onSave, mode, departments = [] }: RoomFormProps) {
   const [formData, setFormData] = useState<Room>(room || { ...defaultRoom, id: generateId('r') })
   const [newEquipment, setNewEquipment] = useState('')
 
   // Reset form when room changes
   useEffect(() => {
-    setFormData(room || { ...defaultRoom, id: generateId('r') })
+    const initialRoom = room || { ...defaultRoom, id: generateId('r') }
+    if (!initialRoom.departmentId && departments.length > 0) {
+      initialRoom.departmentId = String(departments[0].id)
+    }
+    setFormData(initialRoom)
     setNewEquipment('')
-  }, [room, isOpen])
+  }, [room, isOpen, departments])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.building !== 'AMPHI' && !formData.departmentId) {
+      alert("Veuillez sélectionner un département.");
+      return;
+    }
     onSave(formData)
     onClose()
   }
@@ -137,14 +147,43 @@ export function RoomForm({ room, isOpen, onClose, onSave, mode }: RoomFormProps)
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="building">Bâtiment</Label>
-            <Input
-              id="building"
+            <Label htmlFor="building">Type de salle *</Label>
+            <Select
               value={formData.building}
-              onChange={(e) => updateField('building', e.target.value)}
-              placeholder="Bâtiment principal"
-            />
+              onValueChange={(value) => updateField('building', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SALLE">Salle de cours</SelectItem>
+                <SelectItem value="AMPHI">Amphithéâtre</SelectItem>
+                <SelectItem value="LABO">Laboratoire</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {formData.building !== 'AMPHI' && departments.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="departmentId">Département *</Label>
+              <Select
+                value={formData.departmentId || ''}
+                onValueChange={(value) => updateField('departmentId', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un département" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>
+                      {dept.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Équipements courants</Label>

@@ -16,7 +16,6 @@ import {
   MapPin,
   User,
   BookOpen,
-  GraduationCap,
   Award,
   Monitor,
   AlertTriangle,
@@ -155,13 +154,7 @@ export function SessionModal({ session, course, isOpen, onClose, onEdit, onDelet
                     <p className="text-sm font-medium">{course.credits}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Coefficient</p>
-                    <p className="text-sm font-medium">{course.coefficient}</p>
-                  </div>
-                </div>
+
               </div>
 
               {/* Volume horaire */}

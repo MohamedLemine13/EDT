@@ -2,6 +2,8 @@ package PEI.EDT.Dtos;
 
 import lombok.*;
 
+import java.util.List;
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
@@ -13,21 +15,18 @@ public class AffectationEnseignementDto {
     private Integer semestreId;
     private String semestreLibelle;
 
-    private Integer departementId;
-    private String departementCode;
+    private List<Integer> departementIds;
+    private List<String> departementCodes;
 
-    private Boolean isCommun;
     // Teaching
     private String matiereCode;
     private String type; // CM | TD | TP
 
-    // Professor
-    private Integer professeurId;
-    private String professeurNom;
-    private String professeurPrenom;
-    private String professeurStatut; // PERMANENT | VACATAIRE
+    // ✅ Multiple professors
+    private List<Integer> professeurIds;
+    private List<String> professeurNoms;
 
-    private Integer salleId;
-    private String salleNom;
-    private String typeSalle; // AMPHI | SALLE | LABO
+    // ✅ Multiple salles
+    private List<Integer> salleIds;
+    private List<String> salleNoms;
 }

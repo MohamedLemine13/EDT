@@ -23,6 +23,9 @@ public class    Matiere {
     @Column(nullable = false)
     private Integer credits;
 
+    @Column(name = "type_matiere", length = 10)
+    private String typeMatiere; // "DEP", "HE", "ST"
+
     @Column(nullable = false)
     private Integer hCm;
 

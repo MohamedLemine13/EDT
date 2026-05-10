@@ -76,6 +76,8 @@ public class SalleService {
                 .typeSalle(typeSalle)
                 .ecole(ecole)
                 .departement(departement) // null for AMPHI
+                .capacite(dto.getCapacite())
+                .equipements(dto.getEquipements())
                 .build();
 
         return toDto(salleRepo.save(s));
@@ -108,6 +110,8 @@ public class SalleService {
 
         if (dto.getNom() != null) s.setNom(dto.getNom());
         if (dto.getTypeSalle() != null) s.setTypeSalle(parseTypeSalle(dto.getTypeSalle()));
+        if (dto.getCapacite() != null) s.setCapacite(dto.getCapacite());
+        if (dto.getEquipements() != null) s.setEquipements(dto.getEquipements());
 
         if (dto.getDepartementId() != null) {
             Departement departement = departementRepo.findById(dto.getDepartementId())
@@ -130,6 +134,8 @@ public class SalleService {
                 .typeSalle(s.getTypeSalle().name())
                 .ecoleId(s.getEcole() == null ? null : s.getEcole().getId())
                 .departementId(s.getDepartement() == null ? null : s.getDepartement().getId())
+                .capacite(s.getCapacite())
+                .equipements(s.getEquipements())
                 .build();
     }
 

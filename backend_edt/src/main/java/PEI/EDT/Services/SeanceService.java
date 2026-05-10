@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import PEI.EDT.Entities.Enums.RoleUtilisateur;
 import PEI.EDT.Exceptions.ForbiddenException;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -91,16 +94,16 @@ public class SeanceService {
 
         // Optional links (depend on type)
         Matiere matiere = null;
-        Salle salle = null;
 
         if (dto.getMatiereCode() != null) {
             matiere = matiereRepo.findById(dto.getMatiereCode())
                     .orElseThrow(() -> new ResourceNotFoundException("Matiere not found: " + dto.getMatiereCode()));
         }
-        // salle is ONLY manual for non-teaching seances
-        if (!teaching && dto.getSalleId() != null) {
-            salle = salleRepo.findById(dto.getSalleId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Salle not found: " + dto.getSalleId()));
+
+        // Resolve manual salles for non-teaching seances
+        Set<Salle> manualSalles = new HashSet<>();
+        if (!teaching && dto.getSalleIds() != null && !dto.getSalleIds().isEmpty()) {
+            manualSalles = new HashSet<>(salleRepo.findAllById(dto.getSalleIds()));
         }
 
         Seance seance = Seance.builder()
@@ -108,7 +111,6 @@ public class SeanceService {
                 .statut(statut)
                 .creneau(creneau)
                 .matiere(matiere)
-                .salle(salle)
                 .semaineAcademique(semaine)
                 .tag(dto.getTag())
                 .build();
@@ -118,54 +120,39 @@ public class SeanceService {
         // =========================
 
         if (!teaching) {
-            // Non CM/TD/TP => manual professor + manual salle (both optional)
-            if (dto.getProfesseurId() != null) {
-                Professeur prof = professeurRepo.findById(dto.getProfesseurId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Professeur not found: " + dto.getProfesseurId()));
-                seance.setProfesseur(prof);
-            } else {
-                seance.setProfesseur(null);
+            // Non CM/TD/TP => manual professors + salles (both optional)
+            if (dto.getProfesseurIds() != null && !dto.getProfesseurIds().isEmpty()) {
+                Set<Professeur> profs = new HashSet<>(professeurRepo.findAllById(dto.getProfesseurIds()));
+                seance.setProfesseurs(profs);
             }
-            // salle already optional (seance.setSalle(salle)) - ok
+            seance.setSalles(manualSalles);
         } else {
-            // Teaching session => professor + salle come from AffectationEnseignement
+            // Teaching session => professors + salles come from AffectationEnseignement
             if (matiere == null) {
                 throw new BadRequestException("For CM/TD/TP: matiereCode is required.");
             }
 
             if (creneau.getTypeCreneau() == TypeCreneau.DEP) {
-
-                // already validated: exactly 1 departementId
                 Integer deptId = dto.getDepartementIds().get(0);
-
                 AffectationEnseignement aff = affectationRepo
-                        .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
-                                creneau.getSemestre().getId(),
-                                deptId,
-                                matiere.getCode(),
-                                typeSeance
-                        )
+                        .findBySemestre_IdAndDepartements_IdAndMatiere_CodeAndType(
+                                creneau.getSemestre().getId(), deptId, matiere.getCode(), typeSeance
+                        ).stream().findFirst()
                         .orElseThrow(() -> new BadRequestException(
-                                "No AffectationEnseignement found for (semestre, departement, matiere, type)."
-                        ));
-
-                seance.setProfesseur(aff.getProfesseur());
-                seance.setSalle(aff.getSalle());
-
+                                "No AffectationEnseignement found for (semestre, departement, matiere, type)."));
+                seance.setProfesseurs(new HashSet<>(aff.getProfesseurs()));
+                seance.setSalles(new HashSet<>(aff.getSalles()));
             } else {
-                // ✅ COMMUN (HE/ST): use common affectation (isCommun=true)
                 AffectationEnseignement aff = affectationRepo
-                        .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
-                                creneau.getSemestre().getId(),
-                                matiere.getCode(),
-                                typeSeance
-                        )
+                        .findBySemestre_IdAndMatiere_CodeAndType(
+                                creneau.getSemestre().getId(), matiere.getCode(), typeSeance
+                        ).stream()
+                        .filter(a -> a.getDepartements().size() != 1)
+                        .findFirst()
                         .orElseThrow(() -> new BadRequestException(
-                                "No common AffectationEnseignement found (isCommun=true) for (semestre, matiere, type)."
-                        ));
-
-                seance.setProfesseur(aff.getProfesseur());
-                seance.setSalle(aff.getSalle());
+                                "No common AffectationEnseignement found for (semestre, matiere, type)."));
+                seance.setProfesseurs(new HashSet<>(aff.getProfesseurs()));
+                seance.setSalles(new HashSet<>(aff.getSalles()));
             }
         }
 
@@ -174,9 +161,9 @@ public class SeanceService {
         // COLLISION CHECKS
         // =========================
 
-        // salle collision only if salle != null
-        if (seance.getSalle() != null) {
-            checkSalleCollisionCreate(seance);
+        // salle collision for each salle
+        for (Salle sl : seance.getSalles()) {
+            checkSalleCollisionCreate(seance, sl.getId());
         }
 
         // departement collisions / attachments:
@@ -225,13 +212,12 @@ public class SeanceService {
 
 
         // teacher collision only if professeur != null (avoid NPE)
-        if (seance.getProfesseur() != null) {
-            if (seanceRepo.existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_Id(
-                    seance.getProfesseur().getId(),
-                    seance.getCreneau().getId(),
-                    seance.getSemaineAcademique().getId()
+        // teacher collision for each professeur
+        for (Professeur prof : seance.getProfesseurs()) {
+            if (seanceRepo.existsByProfesseurs_IdAndCreneau_IdAndSemaineAcademique_Id(
+                    prof.getId(), seance.getCreneau().getId(), seance.getSemaineAcademique().getId()
             )) {
-                throw new BadRequestException("This teacher already has a seance at this time.");
+                throw new BadRequestException("Teacher " + prof.getNom() + " already has a seance at this time.");
             }
         }
 
@@ -260,9 +246,9 @@ public class SeanceService {
                 && dto.getType() == null
                 && dto.getCreneauId() == null
                 && dto.getMatiereCode() == null
-                && dto.getSalleId() == null
+                && dto.getSalleIds() == null
                 && dto.getSemaineId() == null
-                && dto.getProfesseurId() == null
+                && dto.getProfesseurIds() == null
                 && dto.getIsCommun() == null
                 && dto.getDepartementIds() == null;
 
@@ -316,17 +302,13 @@ public class SeanceService {
             seance.setMatiere(matiere);
         }
 
-        // Convention for UPDATE:
-        // - dto.salleId == null   => no change
-        // - dto.salleId == 0      => clear salle (set null)
-        // - dto.salleId > 0       => set salle
-        if (dto.getSalleId() != null) {
-            if (dto.getSalleId() == 0) {
-                seance.setSalle(null);
+        // Salles update: if salleIds provided, replace
+        if (dto.getSalleIds() != null) {
+            if (dto.getSalleIds().isEmpty()) {
+                seance.getSalles().clear();
             } else {
-                Salle salle = salleRepo.findById(dto.getSalleId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Salle not found: " + dto.getSalleId()));
-                seance.setSalle(salle);
+                Set<Salle> newSalles = new HashSet<>(salleRepo.findAllById(dto.getSalleIds()));
+                seance.setSalles(newSalles);
             }
         }
 
@@ -374,30 +356,21 @@ public class SeanceService {
         // ----------------------------
 
         if (!teaching) {
-            // Non CM/TD/TP: professeur is manual; NEVER use AffectationEnseignement
-
-            // Convention for UPDATE:
-            // - dto.professeurId == null => if type changed to non-teaching, clear professeur; otherwise keep existing
-            // - dto.professeurId == 0    => clear professeur (set null)
-            // - dto.professeurId > 0     => set professeur
-            if (dto.getProfesseurId() != null) {
-                if (dto.getProfesseurId() == 0) {
-                    seance.setProfesseur(null);
+            // Non CM/TD/TP: professeurs are manual
+            if (dto.getProfesseurIds() != null) {
+                if (dto.getProfesseurIds().isEmpty()) {
+                    seance.getProfesseurs().clear();
                 } else {
-                    Professeur prof = professeurRepo.findById(dto.getProfesseurId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Professeur not found: " + dto.getProfesseurId()));
-                    seance.setProfesseur(prof);
+                    Set<Professeur> profs = new HashSet<>(professeurRepo.findAllById(dto.getProfesseurIds()));
+                    seance.setProfesseurs(profs);
                 }
             } else if (typeChangedInRequest) {
-                // Type changed in this request (e.g., CM -> MEETING): ensure we are not stuck with affectation-driven prof
-                seance.setProfesseur(null);
+                seance.getProfesseurs().clear();
             }
 
             // Departments:
-            // For non-teaching seances, your existing model attaches departments via salle/ecole logic.
-            // If salle is null, we cannot safely attach departments (because resolveTargetDepartements/attachDepartments use salle).
-            if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty() && seance.getSalle() == null) {
-                throw new BadRequestException("Cannot attach departements when salle is null (non CM/TD/TP). Provide salleId or omit departementIds.");
+            if (dto.getDepartementIds() != null && !dto.getDepartementIds().isEmpty() && seance.getSalles().isEmpty()) {
+                throw new BadRequestException("Cannot attach departements when salles is empty (non CM/TD/TP).");
             }
 
         } else {
@@ -429,18 +402,19 @@ public class SeanceService {
                 }
 
                 AffectationEnseignement aff = affectationRepo
-                        .findBySemestre_IdAndDepartement_IdAndMatiere_CodeAndType(
+                        .findBySemestre_IdAndDepartements_IdAndMatiere_CodeAndType(
                                 seance.getCreneau().getSemestre().getId(),
                                 deptId,
                                 seance.getMatiere().getCode(),
                                 seance.getType()
-                        )
+                        ).stream()
+                        .findFirst()
                         .orElseThrow(() -> new BadRequestException(
                                 "No AffectationEnseignement found for (semestre, departement, matiere, type)."
                         ));
 
-                seance.setProfesseur(aff.getProfesseur());
-                seance.setSalle(aff.getSalle());
+                seance.setProfesseurs(new HashSet<>(aff.getProfesseurs()));
+                seance.setSalles(new HashSet<>(aff.getSalles()));
 
             } else {
                 // COMMUN (HE/ST)
@@ -452,17 +426,19 @@ public class SeanceService {
                 }
 
                 AffectationEnseignement aff = affectationRepo
-                        .findBySemestre_IdAndIsCommunTrueAndMatiere_CodeAndType(
+                        .findBySemestre_IdAndMatiere_CodeAndType(
                                 seance.getCreneau().getSemestre().getId(),
                                 seance.getMatiere().getCode(),
                                 seance.getType()
-                        )
+                        ).stream()
+                        .filter(a -> a.getDepartements().size() != 1)
+                        .findFirst()
                         .orElseThrow(() -> new BadRequestException(
-                                "No common AffectationEnseignement found (isCommun=true) for (semestre, matiere, type)."
+                                "No common AffectationEnseignement found for (semestre, matiere, type)."
                         ));
 
-                seance.setProfesseur(aff.getProfesseur());
-                seance.setSalle(aff.getSalle());
+                seance.setProfesseurs(new HashSet<>(aff.getProfesseurs()));
+                seance.setSalles(new HashSet<>(aff.getSalles()));
             }
         }
 
@@ -481,21 +457,20 @@ public class SeanceService {
                             : null
             );
 
-            // salle collision only if salle is not null (should be non-null for teaching)
-            if (seance.getSalle() != null) {
-                checkSalleCollisionUpdate(seance, id);
+            // salle collision for each salle
+            for (Salle sl : seance.getSalles()) {
+                checkSalleCollisionUpdate(seance, id, sl.getId());
             }
 
             checkDepartementCollisionsUpdate(seance, targetDepts, id);
 
-            // teacher collision only if professeur is not null
-            if (seance.getProfesseur() != null && seanceRepo.existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
-                    seance.getProfesseur().getId(),
-                    seance.getCreneau().getId(),
-                    seance.getSemaineAcademique().getId(),
-                    id
-            )) {
-                throw new BadRequestException("This teacher already has a seance at this time.");
+            // teacher collision for each professeur
+            for (Professeur prof : seance.getProfesseurs()) {
+                if (seanceRepo.existsByProfesseurs_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+                        prof.getId(), seance.getCreneau().getId(), seance.getSemaineAcademique().getId(), id
+                )) {
+                    throw new BadRequestException("Teacher " + prof.getNom() + " already has a seance at this time.");
+                }
             }
 
             Seance saved = seanceRepo.save(seance);
@@ -512,19 +487,18 @@ public class SeanceService {
             // Non teaching: we do NOT force department attachment (unless you keep salle and your rules allow it)
             // We'll keep your existing join table unchanged unless departementIds were provided AND salle != null.
 
-            // salle collision only if salle not null
-            if (seance.getSalle() != null) {
-                checkSalleCollisionUpdate(seance, id);
+            // salle collision for each salle
+            for (Salle sl : seance.getSalles()) {
+                checkSalleCollisionUpdate(seance, id, sl.getId());
             }
 
-            // teacher collision only if professeur not null
-            if (seance.getProfesseur() != null && seanceRepo.existsByProfesseur_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
-                    seance.getProfesseur().getId(),
-                    seance.getCreneau().getId(),
-                    seance.getSemaineAcademique().getId(),
-                    id
-            )) {
-                throw new BadRequestException("This teacher already has a seance at this time.");
+            // teacher collision for each professeur
+            for (Professeur prof : seance.getProfesseurs()) {
+                if (seanceRepo.existsByProfesseurs_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+                        prof.getId(), seance.getCreneau().getId(), seance.getSemaineAcademique().getId(), id
+                )) {
+                    throw new BadRequestException("Teacher " + prof.getNom() + " already has a seance at this time.");
+                }
             }
 
             Seance saved = seanceRepo.save(seance);
@@ -585,7 +559,7 @@ public class SeanceService {
 
     @Transactional(readOnly = true)
     public List<SeanceDto> listByProfesseur(Integer professeurId, Integer semestreId, Integer semaineId) {
-        return seanceRepo.findByProfesseur_Id(professeurId).stream()
+        return seanceRepo.findByProfesseurs_Id(professeurId).stream()
                 .filter(s -> semestreId == null || s.getCreneau().getSemestre().getId().equals(semestreId))
                 .filter(s -> semaineId == null || s.getSemaineAcademique().getId().equals(semaineId))
                 .map(DtoMapper::toSeanceDto)
@@ -688,9 +662,9 @@ public class SeanceService {
         }
     }
 
-    private void checkSalleCollisionCreate(Seance seance) {
-        boolean occupied = seanceRepo.existsBySalle_IdAndCreneau_IdAndSemaineAcademique_Id(
-                seance.getSalle().getId(),
+    private void checkSalleCollisionCreate(Seance seance, Integer salleId) {
+        boolean occupied = seanceRepo.existsBySalles_IdAndCreneau_IdAndSemaineAcademique_Id(
+                salleId,
                 seance.getCreneau().getId(),
                 seance.getSemaineAcademique().getId()
         );
@@ -699,9 +673,9 @@ public class SeanceService {
         }
     }
 
-    private void checkSalleCollisionUpdate(Seance seance, Integer seanceId) {
-        boolean occupied = seanceRepo.existsBySalle_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
-                seance.getSalle().getId(),
+    private void checkSalleCollisionUpdate(Seance seance, Integer seanceId, Integer salleId) {
+        boolean occupied = seanceRepo.existsBySalles_IdAndCreneau_IdAndSemaineAcademique_IdAndIdNot(
+                salleId,
                 seance.getCreneau().getId(),
                 seance.getSemaineAcademique().getId(),
                 seanceId
@@ -722,22 +696,29 @@ public class SeanceService {
             Integer deptId = requestedDepartementIds.get(0);
             Departement dept = departementRepo.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId));
-            if (seance.getSalle().getDepartement() == null) {
-                throw new BadRequestException("For DEP seance, salle must be attached to a departement (AMPHI is not allowed for DEP).");
-            }
-
-            // Keep your consistency rule
-            if (!seance.getSalle().getDepartement().getId().equals(dept.getId())) {
-                throw new BadRequestException("For DEP seance, salle.departement must match the provided departementId.");
+            // For DEP, check that at least one salle belongs to the department
+            if (!seance.getSalles().isEmpty()) {
+                Salle firstSalle = seance.getSalles().iterator().next();
+                if (firstSalle.getDepartement() != null && !firstSalle.getDepartement().getId().equals(dept.getId())) {
+                    throw new BadRequestException("For DEP seance, salle.departement must match the provided departementId.");
+                }
             }
             return List.of(dept);
         }
 
-        String ecoleId = seance.getSalle().getEcole().getId();
+        // Common slot: use first salle's ecole to find departments, or all departments
+        if (!seance.getSalles().isEmpty() && seance.getSalles().iterator().next().getEcole() != null) {
+            String ecoleId = seance.getSalles().iterator().next().getEcole().getId();
+            List<Departement> depts = departementRepo.findByEcole_Id(ecoleId);
+            if (depts.isEmpty()) {
+                throw new BadRequestException("No departments found for ecoleId=" + ecoleId);
+            }
+            return depts;
+        }
 
-        List<Departement> depts = departementRepo.findByEcole_Id(ecoleId);
+        List<Departement> depts = departementRepo.findAll();
         if (depts.isEmpty()) {
-            throw new BadRequestException("No departments found for ecoleId=" + ecoleId + " (cannot attach common seance).");
+            throw new BadRequestException("No departments found.");
         }
         return depts;
     }
@@ -801,13 +782,12 @@ public class SeanceService {
             Integer deptId = requestedDepartementIds.get(0);
             Departement dept = departementRepo.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Departement not found: " + deptId));
-            if (seance.getSalle().getDepartement() == null) {
-                throw new BadRequestException("For DEP seance, salle must be attached to a departement (AMPHI is not allowed for DEP).");
-            }
-
-            // Strong consistency: the room belongs to a department, DEP seance should match that department
-            if (!seance.getSalle().getDepartement().getId().equals(dept.getId())) {
-                throw new BadRequestException("For DEP seance, salle.departement must match the provided departementId.");
+            // Validate salle-department consistency if salles exist
+            if (!seance.getSalles().isEmpty()) {
+                Salle firstSalle = seance.getSalles().iterator().next();
+                if (firstSalle.getDepartement() != null && !firstSalle.getDepartement().getId().equals(dept.getId())) {
+                    throw new BadRequestException("For DEP seance, salle.departement must match the provided departementId.");
+                }
             }
 
             SeanceDepartement link = SeanceDepartement.builder()
@@ -821,12 +801,10 @@ public class SeanceService {
         }
 
         // ✅ Common slot (HE/ST/AUTRE):
-        // If salle exists => attach departments of that school.
-        // If salle is null (ex: AUTRE Instruction Militaire) => attach ALL departments.
         List<Departement> depts;
 
-        if (seance.getSalle() != null && seance.getSalle().getEcole() != null) {
-            String ecoleId = seance.getSalle().getEcole().getId();
+        if (!seance.getSalles().isEmpty() && seance.getSalles().iterator().next().getEcole() != null) {
+            String ecoleId = seance.getSalles().iterator().next().getEcole().getId();
             depts = departementRepo.findByEcole_Id(ecoleId);
         } else {
             depts = departementRepo.findAll();

@@ -14,4 +14,7 @@ public class CreateSalleDto {
 
     // ✅ Optional: required for SALLE/LABO, null for AMPHI
     private Integer departementId;
+
+    private Integer capacite;
+    private String equipements;
 }

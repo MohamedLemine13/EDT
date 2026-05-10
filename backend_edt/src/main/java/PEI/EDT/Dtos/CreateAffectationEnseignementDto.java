@@ -9,16 +9,13 @@ public class CreateAffectationEnseignementDto {
 
     // Context
     private Integer semestreId;
-    private Integer departementId;
-    // ✅ NEW
-    private Boolean isCommun; // if true => departementId must be null
+    private java.util.List<Integer> departementIds;
 
     // Teaching definition
     private String matiereCode; // ex: "JAVA", "RESEAUX"
     private String type;        // CM | TD | TP
 
-    // Professor
-    // Frontend sends this ONLY ONCE when creating the affectation
-    private Integer professeurId;
-    private Integer salleId;
+    // ✅ Multiple professors and rooms
+    private java.util.List<Integer> professeurIds;
+    private java.util.List<Integer> salleIds;
 }

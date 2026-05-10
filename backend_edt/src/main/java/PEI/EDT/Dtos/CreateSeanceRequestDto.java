@@ -15,11 +15,13 @@ public class CreateSeanceRequestDto {
     // Links (IDs)
     private Integer creneauId;
     private String matiereCode;
-    private Integer salleId;
     private Integer semaineId;
-    private Integer professeurId; // optional for DEVOIR/EXAMEN/MEETING/AUTRE
 
-    // ✅ NEW: commun vs dep
+    // ✅ Multiple professors and rooms
+    private List<Integer> professeurIds;
+    private List<Integer> salleIds;
+
+    // ✅ commun vs dep
     private Boolean isCommun;
 
     // Optional tag/label (e.g. "Rattrapage", "Online")

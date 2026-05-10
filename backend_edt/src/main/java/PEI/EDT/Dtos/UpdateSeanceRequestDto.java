@@ -15,11 +15,13 @@ public class UpdateSeanceRequestDto {
 
     private Integer creneauId;
     private String matiereCode;
-    private Integer salleId;
     private Integer semaineId;
-    private Integer professeurId; // optional
 
-    // ✅ NEW: commun vs dep (null means "infer from creneau")
+    // ✅ Multiple professors and rooms
+    private List<Integer> professeurIds;
+    private List<Integer> salleIds;
+
+    // ✅ commun vs dep (null means "infer from creneau")
     private Boolean isCommun;
 
     // Optional tag/label (e.g. "Rattrapage", "Online")

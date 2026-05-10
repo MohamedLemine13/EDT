@@ -17,6 +17,7 @@ interface Room {
   capacity: number
   equipment: string[]
   building: string
+  departmentId?: string
 }
 
 interface RoomsTableProps {

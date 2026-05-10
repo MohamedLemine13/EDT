@@ -28,6 +28,7 @@ import {
   affectationService,
   semestreService,
   departementService,
+  ecoleService,
 } from '@/services'
 import type {
   MatiereDto,
@@ -36,6 +37,7 @@ import type {
   AffectationEnseignementDto,
   SemestreDto,
   DepartementDto,
+  EcoleDto,
   Course,
   Teacher,
   Room,
@@ -49,7 +51,7 @@ function mapMatiereToCourse(m: MatiereDto): Course {
     code: m.code,
     title: m.intitule,
     credits: m.credits,
-    coefficient: 1,
+    typeMatiere: m.typeMatiere as any,
     hours: { cm: m.hCm, td: m.hTd, tp: m.hTp, total: m.hCm + m.hTd + m.hTp },
     teachers: { cm: '', td: '', tp: '' },
     rooms: { cm: '', td: '', tp: '' },
@@ -72,9 +74,10 @@ function mapSalleToRoom(s: SalleDto): Room {
     id: String(s.id),
     code: s.nom,
     name: s.nom,
-    capacity: 0,
-    equipment: [],
+    capacity: s.capacite || 0,
+    equipment: s.equipements ? s.equipements.split(',').map(e => e.trim()).filter(Boolean) : [],
     building: s.typeSalle,
+    departmentId: s.departementId ? String(s.departementId) : undefined,
   }
 }
 
@@ -86,6 +89,7 @@ export default function BDDPage() {
   const [affectations, setAffectations] = useState<AffectationEnseignementDto[]>([])
   const [semestres, setSemestres] = useState<SemestreDto[]>([])
   const [departments, setDepartments] = useState<DepartementDto[]>([])
+  const [ecoles, setEcoles] = useState<EcoleDto[]>([])
 
   // Selectors for affectations tab
   const [selectedSemestre, setSelectedSemestre] = useState('')
@@ -125,12 +129,14 @@ export default function BDDPage() {
       salleService.getAll(),
       semestreService.getAll(),
       departementService.getAll(),
-    ]).then(([mat, prof, sal, sem, dept]) => {
+      ecoleService.getAll(),
+    ]).then(([mat, prof, sal, sem, dept, eco]) => {
       setMatieres(mat)
       setProfesseurs(prof)
       setSalles(sal)
       setSemestres(sem)
       setDepartments(dept)
+      setEcoles(eco)
       if (sem.length > 0) setSelectedSemestre(String(sem[0].id))
       if (dept.length > 0) setSelectedDept(String(dept[0].id))
     }).catch(() => setError('Impossible de charger les données'))
@@ -189,7 +195,15 @@ export default function BDDPage() {
   // CRUD handlers
   const handleSaveCourse = async (course: Course) => {
     try {
-      const dto = { code: course.code, intitule: course.title, credits: course.credits, hCm: course.hours.cm, hTd: course.hours.td, hTp: course.hours.tp }
+      const dto = { 
+        code: course.code, 
+        intitule: course.title, 
+        credits: course.credits, 
+        hCm: course.hours.cm, 
+        hTd: course.hours.td, 
+        hTp: course.hours.tp,
+        typeMatiere: course.typeMatiere 
+      }
       if (formMode === 'create') {
         await matiereService.create(dto)
       } else {
@@ -209,7 +223,8 @@ export default function BDDPage() {
       const parts = teacher.name.split(' ')
       const prenom = parts[0] || ''
       const nom = parts.slice(1).join(' ') || ''
-      const dto = { nom, prenom, statut: 'PERMANENT' as const, email: teacher.email }
+      const statut: "VACATAIRE" | "PERMANENT" = teacher.department === 'VACATAIRE' ? 'VACATAIRE' : 'PERMANENT'
+      const dto = { nom, prenom, statut, email: teacher.email }
       if (formMode === 'create') {
         await professeurService.create(dto)
       } else {
@@ -225,7 +240,15 @@ export default function BDDPage() {
 
   const handleSaveRoom = async (room: Room) => {
     try {
-      const dto = { nom: room.name, typeSalle: (room.building as 'AMPHI' | 'SALLE' | 'LABO') || 'SALLE', ecoleId: 'ESP' }
+      const ecoleId = ecoles.length > 0 ? ecoles[0].id : 'ESP'
+      const dto = { 
+        nom: room.name, 
+        typeSalle: (room.building as 'AMPHI' | 'SALLE' | 'LABO') || 'SALLE', 
+        ecoleId,
+        departementId: room.building !== 'AMPHI' && room.departmentId ? Number(room.departmentId) : undefined,
+        capacite: room.capacity || undefined,
+        equipements: room.equipment && room.equipment.length > 0 ? room.equipment.join(', ') : undefined
+      }
       if (formMode === 'create') {
         await salleService.create(dto)
       } else {
@@ -265,17 +288,18 @@ export default function BDDPage() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     try {
+      const depIdsForm = formData.getAll('departementIds').map(id => parseInt(id as string));
       await affectationService.upsert({
         semestreId: Number(selectedSemestre),
-        departementId: Number(selectedDept),
+        departementIds: depIdsForm,
         matiereCode: formData.get('courseCode') as string,
         type: formData.get('type') as 'CM' | 'TD' | 'TP',
-        professeurId: parseInt(formData.get('teacherId') as string),
-        salleId: parseInt(formData.get('roomId') as string),
+        professeurIds: formData.getAll('teacherIds').map(id => parseInt(id as string)),
+        salleIds: formData.getAll('roomIds').map(id => parseInt(id as string)),
       })
       setIsAffectationFormOpen(false)
       // Refresh affectations
-      const updated = await affectationService.getAll(Number(selectedSemestre), Number(selectedDept))
+      const updated = await affectationService.getAll(Number(selectedSemestre), selectedDept === 'tous' ? undefined : Number(selectedDept))
       setAffectations(updated)
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } } }
@@ -286,7 +310,7 @@ export default function BDDPage() {
   const handleDeleteAffectation = async (id: number) => {
     try {
       await affectationService.delete(id)
-      const updated = await affectationService.getAll(Number(selectedSemestre), Number(selectedDept))
+      const updated = await affectationService.getAll(Number(selectedSemestre), selectedDept === 'tous' ? undefined : Number(selectedDept))
       setAffectations(updated)
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } } }
@@ -414,6 +438,7 @@ export default function BDDPage() {
                     <Select value={selectedDept} onValueChange={setSelectedDept}>
                       <SelectTrigger className="w-[100px]"><SelectValue placeholder="Dept" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="tous">Tous (Commun & Départements)</SelectItem>
                         {departments.map(d => (
                           <SelectItem key={d.id} value={String(d.id)}>{d.code}</SelectItem>
                         ))}
@@ -441,10 +466,13 @@ export default function BDDPage() {
                         <div key={aff.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
                           <div>
                             <p className="font-medium">{aff.matiereCode} — {aff.type}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {aff.professeurPrenom} {aff.professeurNom} •
-                              {aff.salleNom} •
-                              <span className="font-medium text-primary ml-1">{aff.isCommun ? 'Commun' : aff.departementCode}</span>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {aff.professeurNoms?.join(", ")} •
+                              <span className="font-medium text-primary ml-1">
+                                {aff.departementCodes && aff.departementCodes.length > 0 
+                                  ? aff.departementCodes.join(', ') 
+                                  : 'Commun (Tous)'}
+                              </span>
                             </p>
                           </div>
                           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAffectation(aff.id)}>
@@ -508,6 +536,7 @@ export default function BDDPage() {
         onClose={() => setIsRoomFormOpen(false)}
         onSave={handleSaveRoom}
         mode={formMode}
+        departments={departments}
       />
 
       {/* Affectation Form Dialog */}
@@ -531,24 +560,54 @@ export default function BDDPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <label htmlFor="teacherId" className="text-sm font-medium">Enseignant</label>
-              <select id="teacherId" name="teacherId" required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="">-- Sélectionner --</option>
-                {professeurs.map((p) => (
-                  <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>
+              <label className="text-sm font-medium">Départements concernés</label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {departments.map((d) => (
+                  <label key={d.id} className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      name="departementIds" 
+                      value={d.id} 
+                      className="rounded border-gray-300"
+                      defaultChecked={selectedDept === String(d.id)}
+                    />
+                    <span className="text-sm">{d.code}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Laissez tout décoché pour une matière commune (HE/ST).</p>
             </div>
             <div className="space-y-2">
-              <label htmlFor="roomId" className="text-sm font-medium">Salle</label>
-              <select id="roomId" name="roomId" required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="">-- Sélectionner --</option>
-                {salles.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nom} ({s.typeSalle})</option>
+              <label className="text-sm font-medium">Enseignant(s)</label>
+              <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                {professeurs.map((p) => (
+                  <label key={p.id} className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      name="teacherIds" 
+                      value={p.id} 
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm">{p.prenom} {p.nom}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Salle(s)</label>
+              <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                {salles.map((s) => (
+                  <label key={s.id} className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      name="roomIds" 
+                      value={s.id} 
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm">{s.nom} ({s.typeSalle})</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="space-y-2">
               <label htmlFor="type" className="text-sm font-medium">Type</label>

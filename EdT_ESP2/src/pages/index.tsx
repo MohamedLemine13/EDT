@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   CheckCheck,
+  Clock,
 } from "lucide-react";
 import { DAY_LABELS, type DayName } from "@/types";
 import type {
@@ -52,6 +53,7 @@ import {
 } from "@/services";
 import { Input } from "@/components/ui/input";
 import { useAppState } from "@/hooks/useAppState";
+import { useAuth } from "@/hooks/useAuth";
 
 type BackendDay = "LUNDI" | "MARDI" | "MERCREDI" | "JEUDI" | "VENDREDI" | "SAMEDI";
 
@@ -84,19 +86,20 @@ const getTypeBadge = (type: string) => {
 
 function fmtTime(t: string) { return t.length > 5 ? t.substring(0, 5) : t; }
 
-function getTimeSlotsFromCreneaux(creneaux: CreneauDto[]): { label: string; start: string; end: string }[] {
-  const set = new Map<string, { start: string; end: string }>();
+function getTimeSlotsFromCreneaux(creneaux: CreneauDto[]): { label: string; start: string; end: string; type: string }[] {
+  const set = new Map<string, { start: string; end: string; type: string }>();
   creneaux.forEach((c) => {
     const key = `${c.heureDebut}-${c.heureFin}`;
-    if (!set.has(key)) set.set(key, { start: c.heureDebut, end: c.heureFin });
+    if (!set.has(key)) set.set(key, { start: c.heureDebut, end: c.heureFin, type: c.typeCreneau || "AUTRE" });
   });
   return Array.from(set.entries())
     .sort(([, a], [, b]) => a.start.localeCompare(b.start))
-    .map(([, v]) => ({ label: `${fmtTime(v.start)}-${fmtTime(v.end)}`, start: v.start, end: v.end }));
+    .map(([, v]) => ({ label: `${fmtTime(v.start)}-${fmtTime(v.end)}`, start: v.start, end: v.end, type: v.type }));
 }
 
 export default function EmploiPage() {
   const { department } = useAppState();
+  const { user } = useAuth();
 
   // API data
   const [semestres, setSemestres] = useState<SemestreDto[]>([]);
@@ -121,15 +124,17 @@ export default function EmploiPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreneauxOpen, setIsCreneauxOpen] = useState(false);
+  const [editingSlots, setEditingSlots] = useState<{ id: string, oldStart: string, oldEnd: string, newStart: string, newEnd: string, newType: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Create form state — individual editable fields
   const [selectedAffectation, setSelectedAffectation] = useState("");
-  const [pendingSlot, setPendingSlot] = useState<{ day: BackendDay; start: string; end: string; creneauId: number } | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<{ day: BackendDay; start: string; end: string; creneauId: number; type: string } | null>(null);
   const [formMatiere, setFormMatiere] = useState("");
   const [formType, setFormType] = useState<string>("CM");
-  const [formProf, setFormProf] = useState("");
-  const [formSalle, setFormSalle] = useState("");
+  const [formProf, setFormProf] = useState<string[]>([]);
+  const [formSalle, setFormSalle] = useState<string[]>([]);
   const [formTag, setFormTag] = useState("");
   const [formIsCommun, setFormIsCommun] = useState(false);
 
@@ -162,9 +167,10 @@ export default function EmploiPage() {
       semaineService.getAll(Number(selectedSemestre)),
       creneauService.getAll(Number(selectedSemestre)),
     ]).then(([sem, cren]) => {
-      setSemaines(sem);
+      const sortedSem = sem.sort((a, b) => a.numeroSemaine - b.numeroSemaine);
+      setSemaines(sortedSem);
       setCreneaux(cren);
-      if (sem.length > 0) setSelectedSemaine(String(sem[0].numeroSemaine));
+      if (sortedSem.length > 0) setSelectedSemaine(String(sortedSem[0].numeroSemaine));
     }).catch(() => setError("Impossible de charger les semaines"));
   }, [selectedSemestre]);
 
@@ -213,16 +219,87 @@ export default function EmploiPage() {
   // Handle empty cell click → open create dialog with all fields
   const handleEmptyCellClick = (day: BackendDay, start: string, end: string) => {
     const creneau = findCreneau(day, start, end);
-    if (creneau) {
-      setPendingSlot({ day, start, end, creneauId: creneau.id });
-      setSelectedAffectation("");
-      setFormMatiere("");
-      setFormType("CM");
-      setFormProf("");
-      setFormSalle("");
-      setFormTag("");
-      setFormIsCommun(creneau.typeCreneau !== "DEP");
-      setIsCreateOpen(true);
+    if (!creneau) return;
+
+    const type = creneau.typeCreneau || "AUTRE";
+    const role = user?.role || "USER";
+
+    // RBAC checks
+    if (role === "CHEF_DEP" && type !== "DEP") return;
+    if (role === "CHEF_HE" && type !== "HE") return;
+    if (role === "CHEF_ST" && type !== "ST") return;
+
+    setPendingSlot({ day, start, end, creneauId: creneau.id, type });
+    setSelectedAffectation("");
+    setFormMatiere("");
+    setFormType("CM");
+    setFormProf("");
+    setFormSalle("");
+    setFormTag("");
+    setFormIsCommun(type !== "DEP");
+    setIsCreateOpen(true);
+  };
+
+  // Creneaux Management
+  const handleOpenCreneaux = () => {
+    const unique = getTimeSlotsFromCreneaux(creneaux);
+    setEditingSlots(unique.map(u => ({ id: u.label, oldStart: u.start, oldEnd: u.end, newStart: u.start, newEnd: u.end, newType: u.type })));
+    setIsCreneauxOpen(true);
+  };
+
+  const handleSaveCreneaux = async () => {
+    setSaving(true);
+    try {
+      const promises = [];
+      for (const slot of editingSlots) {
+        if (slot.oldStart !== slot.newStart || slot.oldEnd !== slot.newEnd || slot.newType !== "AUTRE") {
+          const matching = creneaux.filter(c => c.heureDebut === slot.oldStart && c.heureFin === slot.oldEnd);
+          for (const c of matching) {
+            // Check if anything actually changed for this slot
+            if (slot.oldStart === slot.newStart && slot.oldEnd === slot.newEnd && slot.newType === c.typeCreneau) continue;
+            promises.push(creneauService.update(c.id, {
+              jour: c.jour,
+              heureDebut: slot.newStart + (slot.newStart.length === 5 ? ":00" : ""),
+              heureFin: slot.newEnd + (slot.newEnd.length === 5 ? ":00" : ""),
+              typeCreneau: slot.newType as "DEP" | "HE" | "ST" | "AUTRE",
+              semestreId: c.semestreId
+            }));
+          }
+        }
+      }
+      await Promise.all(promises);
+      setIsCreneauxOpen(false);
+      
+      const newCren = await creneauService.getAll(Number(selectedSemestre));
+      setCreneaux(newCren);
+      fetchEdt();
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors de la modification des horaires");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInlineTypeChange = async (creneauId: number, newType: string, c: CreneauDto) => {
+    if (c.typeCreneau === newType) return;
+    setSaving(true);
+    try {
+      await creneauService.update(creneauId, {
+        jour: c.jour,
+        heureDebut: c.heureDebut,
+        heureFin: c.heureFin,
+        typeCreneau: newType as "DEP" | "HE" | "ST" | "AUTRE",
+        semestreId: c.semestreId
+      });
+      const newCren = await creneauService.getAll(Number(selectedSemestre));
+      setCreneaux(newCren);
+      fetchEdt();
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors de la modification du type de créneau");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -233,9 +310,9 @@ export default function EmploiPage() {
     if (aff) {
       setFormMatiere(aff.matiereCode);
       setFormType(aff.type);
-      setFormProf(String(aff.professeurId));
-      setFormSalle(String(aff.salleId));
-      setFormIsCommun(aff.isCommun);
+      setFormProf(aff.professeurIds?.map(String) || []);
+      setFormSalle(aff.salleIds?.map(String) || []);
+      setFormIsCommun(aff.departementIds.length !== 1);
     }
   };
 
@@ -245,17 +322,18 @@ export default function EmploiPage() {
 
     setSaving(true);
     try {
+      const isCommunFixed = pendingSlot.type === "HE" || pendingSlot.type === "ST" ? true : pendingSlot.type === "DEP" ? false : formIsCommun;
       const dto: CreateSeanceRequestDto = {
-        type: formType as "CM" | "TD" | "TP",
+        type: formType as any,
         statut: "PLANIFIEE",
         creneauId: pendingSlot.creneauId,
         matiereCode: formMatiere,
-        salleId: Number(formSalle),
+        salleIds: formSalle.length > 0 ? formSalle.map(Number) : undefined,
         semaineId: currentSemaine.id,
-        professeurId: formProf ? Number(formProf) : undefined,
-        isCommun: formIsCommun,
+        professeurIds: formProf.length > 0 ? formProf.map(Number) : undefined,
+        isCommun: isCommunFixed,
         tag: formTag || undefined,
-        departementIds: formIsCommun ? [] : [Number(selectedDept)],
+        departementIds: isCommunFixed ? [] : [Number(selectedDept)],
       };
       await seanceService.create(dto);
       setIsCreateOpen(false);
@@ -333,8 +411,8 @@ export default function EmploiPage() {
       `${s.heureDebut}-${s.heureFin}`,
       `${s.matiereCode} - ${s.matiereIntitule}`,
       s.type,
-      s.salleNom || "",
-      `${s.professeurPrenom} ${s.professeurNom}`,
+      s.salleNoms?.join(", ") || "",
+      s.professeurNoms?.join(", ") || "",
     ]);
 
     const escape = (str: string) => str.replace(/[<>&'"]/g, (c) =>
@@ -408,6 +486,10 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
             <Download className="h-4 w-4" />
           </Button>
 
+          <Button variant="outline" size="sm" onClick={handleOpenCreneaux} title="Gérer les horaires">
+            <Clock className="h-4 w-4 mr-1" /> Horaires
+          </Button>
+
           {allSeances.some((s) => s.statut === "PLANIFIEE") && (
             <Button
               variant="default"
@@ -470,6 +552,29 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
                     </div>
                     {DAYS_ORDER.map((day) => {
                       const seances = getSeances(day, slot.start, slot.end);
+                      const creneau = findCreneau(day, slot.start, slot.end);
+                      const type = creneau?.typeCreneau || "AUTRE";
+                      const role = user?.role || "USER";
+                      let hasAccess = true;
+                      if (role === "CHEF_DEP" && type !== "DEP") hasAccess = false;
+                      if (role === "CHEF_HE" && type !== "HE") hasAccess = false;
+                      if (role === "CHEF_ST" && type !== "ST") hasAccess = false;
+
+                      let cellClass = "h-full rounded-md transition-colors flex items-center justify-center border";
+                      
+                      if (!hasAccess) {
+                        cellClass += " bg-slate-100/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-50";
+                      } else {
+                        cellClass += " cursor-pointer";
+                        if (type === "DEP") {
+                          cellClass += " bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50";
+                        } else if (type === "HE" || type === "ST") {
+                          cellClass += " bg-blue-50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800/50";
+                        } else {
+                          cellClass += " bg-orange-50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/30 border-orange-200 dark:border-orange-800/50";
+                        }
+                      }
+
                       return (
                         <div key={`${day}-${slot.label}`} className="h-[100px] min-w-0 overflow-hidden">
                           {seances.length > 0 ? (
@@ -491,24 +596,43 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
                                     {getStatusBadge(seance.statut)}
                                   </div>
                                   <p className="font-semibold truncate">{seance.matiereCode}</p>
-                                  <p className="text-muted-foreground truncate text-[10px]">{seance.matiereIntitule}</p>
-                                  <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                                    <User className="w-3 h-3" />
-                                    {seance.professeurPrenom} {seance.professeurNom}
+                                  <div className="flex items-center gap-1 font-medium text-[11px] truncate mt-0.5" title={seance.professeurNoms?.join(", ")}>
+                                    <User className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{seance.professeurNoms?.join(", ")}</span>
                                   </div>
-                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                    <MapPin className="w-3 h-3" />
-                                    {seance.salleNom}
+                                  <div className="flex items-center gap-1 text-[10px] opacity-90 truncate" title={seance.salleNoms?.join(", ")}>
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{seance.salleNoms?.join(", ")}</span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
                             <div
-                              onClick={() => handleEmptyCellClick(day, slot.start, slot.end)}
-                              className="h-full bg-slate-100 dark:bg-slate-800/50 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-center"
+                              onClick={() => { if (hasAccess) handleEmptyCellClick(day, slot.start, slot.end); }}
+                              className={`${cellClass} relative group`}
+                              title={hasAccess ? `Ajouter une séance (${type})` : "Non autorisé"}
                             >
-                              <Plus className="w-4 h-4 text-muted-foreground/30" />
+                              <Plus className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/70" />
+                              
+                              {role === "ADMIN" && creneau && (
+                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                  <Select 
+                                    value={type} 
+                                    onValueChange={(val) => handleInlineTypeChange(creneau.id, val, creneau)}
+                                  >
+                                    <SelectTrigger className="h-5 w-[65px] text-[9px] px-1 py-0 shadow-sm border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 rounded-sm">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="DEP" className="text-[10px]">DEP</SelectItem>
+                                      <SelectItem value="HE" className="text-[10px]">HE</SelectItem>
+                                      <SelectItem value="ST" className="text-[10px]">ST</SelectItem>
+                                      <SelectItem value="AUTRE" className="text-[10px]">AUTRE</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -547,8 +671,8 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Jour:</span> {selectedSeance.jour}</div>
                 <div><span className="text-muted-foreground">Créneau:</span> {selectedSeance.heureDebut} - {selectedSeance.heureFin}</div>
-                <div className="flex items-center gap-1"><User className="w-4 h-4" /> {selectedSeance.professeurPrenom} {selectedSeance.professeurNom}</div>
-                <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {selectedSeance.salleNom}</div>
+                <div className="flex items-center gap-1"><User className="w-4 h-4" /> {selectedSeance.professeurNoms?.join(", ")}</div>
+                <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {selectedSeance.salleNoms?.join(", ")}</div>
               </div>
               {/* Status change buttons */}
               <div className="flex flex-wrap gap-2 pt-3 border-t">
@@ -635,9 +759,15 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
                 <Select value={selectedAffectation} onValueChange={handleAffectationQuickFill}>
                   <SelectTrigger><SelectValue placeholder="Optionnel — choisir une affectation..." /></SelectTrigger>
                   <SelectContent>
-                    {affectations.map((a) => (
+                    {affectations
+                      .filter((a) => {
+                        if (pendingSlot?.type === "DEP") return a.departementIds.length === 1;
+                        if (pendingSlot?.type === "HE" || pendingSlot?.type === "ST") return a.departementIds.length !== 1;
+                        return true;
+                      })
+                      .map((a) => (
                       <SelectItem key={a.id} value={String(a.id)}>
-                        {a.matiereCode} ({a.type}) — {a.professeurPrenom} {a.professeurNom} — {a.salleNom}
+                        {a.matiereCode} ({a.type}) — {a.professeurNoms?.join(", ")} — {a.salleNoms?.join(", ")}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -669,34 +799,54 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
                   <SelectItem value="CM">CM — Cours Magistral</SelectItem>
                   <SelectItem value="TD">TD — Travaux Dirigés</SelectItem>
                   <SelectItem value="TP">TP — Travaux Pratiques</SelectItem>
+                  <SelectItem value="EXAMEN">EXAMEN</SelectItem>
+                  <SelectItem value="DEVOIR">DEVOIR</SelectItem>
+                  <SelectItem value="MEETING">MEETING</SelectItem>
+                  <SelectItem value="AUTRE">AUTRE</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Professeur */}
             <div className="space-y-1">
-              <label className="text-sm font-medium">Enseignant</label>
-              <Select value={formProf} onValueChange={setFormProf}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner l'enseignant" /></SelectTrigger>
-                <SelectContent>
-                  {professeurs.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.prenom} {p.nom} ({p.statut})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Enseignant(s)</label>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-md">
+                {professeurs.map((p) => (
+                  <Badge
+                    key={p.id}
+                    variant={formProf.includes(String(p.id)) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      const id = String(p.id);
+                      setFormProf(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                    }}
+                  >
+                    {p.prenom} {p.nom} ({p.statut})
+                  </Badge>
+                ))}
+                {professeurs.length === 0 && <span className="text-muted-foreground text-sm">Aucun enseignant disponible</span>}
+              </div>
             </div>
 
             {/* Salle */}
             <div className="space-y-1">
-              <label className="text-sm font-medium">Salle *</label>
-              <Select value={formSalle} onValueChange={setFormSalle}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner la salle" /></SelectTrigger>
-                <SelectContent>
-                  {sallesAll.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.nom} ({s.typeSalle})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Salle(s) {(formType === "CM" || formType === "TD" || formType === "TP") ? "*" : "(Optionnel)"}</label>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-md">
+                {sallesAll.map((s) => (
+                  <Badge
+                    key={s.id}
+                    variant={formSalle.includes(String(s.id)) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      const id = String(s.id);
+                      setFormSalle(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                    }}
+                  >
+                    {s.nom} ({s.typeSalle})
+                  </Badge>
+                ))}
+                {sallesAll.length === 0 && <span className="text-muted-foreground text-sm">Aucune salle disponible</span>}
+              </div>
             </div>
 
             {/* Tag */}
@@ -728,6 +878,59 @@ ${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${esc
               <Button onClick={handleCreateSeance} disabled={saving || !formMatiere || !formSalle}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
                 Créer la séance
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Creneaux Dialog */}
+      <Dialog open={isCreneauxOpen} onOpenChange={setIsCreneauxOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gérer les horaires</DialogTitle>
+            <DialogDescription>
+              Modifiez les heures de début et de fin des créneaux de ce semestre.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            {editingSlots.map((slot, index) => (
+              <div key={slot.id} className="grid grid-cols-[auto_1fr_auto_1fr_minmax(100px,120px)] items-center gap-3 bg-muted/50 p-2 rounded-lg">
+                <span className="text-sm font-medium w-16 text-muted-foreground">Créneau {index + 1}</span>
+                <Input type="time" value={slot.newStart.substring(0, 5)} onChange={(e) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newStart = e.target.value;
+                  setEditingSlots(newSlots);
+                }} />
+                <span className="text-muted-foreground">-</span>
+                <Input type="time" value={slot.newEnd.substring(0, 5)} onChange={(e) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newEnd = e.target.value;
+                  setEditingSlots(newSlots);
+                }} />
+                <Select value={slot.newType} onValueChange={(val) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newType = val;
+                  setEditingSlots(newSlots);
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEP">DEP</SelectItem>
+                    <SelectItem value="HE">HE</SelectItem>
+                    <SelectItem value="ST">ST</SelectItem>
+                    <SelectItem value="AUTRE">AUTRE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+            {editingSlots.length === 0 && (
+              <p className="text-sm text-muted-foreground">Aucun créneau configuré.</p>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsCreneauxOpen(false)} disabled={saving}>Annuler</Button>
+              <Button onClick={handleSaveCreneaux} disabled={saving || editingSlots.length === 0}>
+                {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Enregistrer
               </Button>
             </div>
           </div>

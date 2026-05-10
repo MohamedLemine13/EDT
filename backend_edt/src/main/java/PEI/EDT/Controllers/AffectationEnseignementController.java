@@ -38,7 +38,7 @@ public class AffectationEnseignementController {
     @GetMapping
     public List<AffectationEnseignementDto> list(
             @RequestParam Integer semestreId,
-            @RequestParam Integer departementId
+            @RequestParam(required = false) Integer departementId
     ) {
         return affectationService.listBySemestreAndDepartement(semestreId, departementId);
     }

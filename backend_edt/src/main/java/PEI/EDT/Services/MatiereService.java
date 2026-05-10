@@ -58,6 +58,7 @@ public class MatiereService {
                 .hCm(dto.getHCm())
                 .hTd(dto.getHTd())
                 .hTp(dto.getHTp())
+                .typeMatiere(dto.getTypeMatiere())
                 .build();
 
         return toDto(matiereRepo.save(matiere));
@@ -79,7 +80,7 @@ public class MatiereService {
     @Transactional(readOnly = true)
     public List<MatiereDto> listByDepartement(Integer departementId) {
         // Get matieres via affectations for this departement
-        List<AffectationEnseignement> affectations = affectationRepo.findByDepartement_Id(departementId);
+        List<AffectationEnseignement> affectations = affectationRepo.findByDepartements_Id(departementId);
         return affectations.stream()
                 .map(AffectationEnseignement::getMatiere)
                 .distinct()
@@ -115,6 +116,10 @@ public class MatiereService {
             m.setHTp(dto.getHTp());
         }
 
+        if (dto.getTypeMatiere() != null) {
+            m.setTypeMatiere(dto.getTypeMatiere());
+        }
+
         return toDto(matiereRepo.save(m));
     }
 
@@ -133,6 +138,7 @@ public class MatiereService {
                 .hCm(m.getHCm())
                 .hTd(m.getHTd())
                 .hTp(m.getHTp())
+                .typeMatiere(m.getTypeMatiere())
                 .build();
     }
 

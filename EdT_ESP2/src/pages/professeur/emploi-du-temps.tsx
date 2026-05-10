@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, BookOpen, MapPin, CheckCircle2, AlertCircle, User, Loader2 } from "lucide-react";
+import { Calendar, Clock, BookOpen, MapPin, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { edtService, semestreService, semaineService, creneauService } from "@/services";
@@ -254,7 +254,7 @@ export default function ProfesseurEmploiDuTemps() {
                                   <p className="text-muted-foreground truncate text-[10px]">{seance.matiereIntitule}</p>
                                   <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                                     <MapPin className="w-3 h-3" />
-                                    {seance.salleNom}
+                                    {seance.salleNoms?.join(", ")}
                                   </div>
                                 </Link>
                               ))}

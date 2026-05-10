@@ -12,4 +12,5 @@ public class MatiereDto {
     private Integer hCm;
     private Integer hTd;
     private Integer hTp;
+    private String typeMatiere;
 }

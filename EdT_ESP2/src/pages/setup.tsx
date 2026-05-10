@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+
 import { useSetup, SetupProvider } from "@/hooks/useSetupContext";
-import { authService } from "@/services";
+import { authService, semaineService, creneauService } from "@/services";
 import type { UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   Check,
   Plus,
+  CalendarDays,
 } from "lucide-react";
 
 function StepIndicator({
@@ -105,6 +106,10 @@ function EcoleStep() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (ecoles.length > 0 && !formData.id && !formData.nom && !formData.domaine && !formData.slug) {
+      setCurrentStep("departements");
+      return;
+    }
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -188,9 +193,20 @@ function EcoleStep() {
               />
               {errors.domaine && <p className="text-xs text-red-500">{errors.domaine}</p>}
             </div>
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-4 gap-3">
+              {ecoles.length > 0 && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={() => setCurrentStep("departements")}
+                >
+                  Continuer sans modifier
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
               <Button type="submit" size="lg" disabled={isSubmitting}>
-                {isSubmitting ? "Création..." : "Créer et Continuer"}
+                {isSubmitting ? "Création..." : (ecoles.length > 0 ? "Ajouter une autre école" : "Créer et Continuer")}
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -236,7 +252,7 @@ function DepartementsStep() {
 
   const handleContinue = () => {
     if (departements.length > 0) {
-      setCurrentStep("administrateurs");
+      setCurrentStep("semestres");
     }
   };
 
@@ -313,6 +329,207 @@ function DepartementsStep() {
             {departements.length > 0 && (
               <div className="mt-6 flex justify-between">
                 <Button variant="outline" onClick={() => setCurrentStep("ecole")}>
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Retour
+                </Button>
+                <Button onClick={handleContinue}>
+                  Continuer
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function SemestresStep() {
+  const { addSemestre, semestres, setCurrentStep } = useSetup();
+  const [formData, setFormData] = useState({ libelle: "S1", dateDebut: "", dateFin: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const generateWeeks = async (semestreId: number, start: Date, end: Date) => {
+    let currentStart = new Date(start);
+    let weekNum = 1;
+    // ensure monday
+    const day = currentStart.getDay();
+    const diff = currentStart.getDate() - day + (day === 0 ? -6 : 1);
+    currentStart.setDate(diff);
+
+    const promises = [];
+    while (currentStart <= end) {
+      const weekEnd = new Date(currentStart);
+      weekEnd.setDate(currentStart.getDate() + 5); // Saturday
+      promises.push(
+        semaineService.create({
+          numeroSemaine: weekNum++,
+          dateDebut: currentStart.toISOString().split('T')[0],
+          dateFin: weekEnd.toISOString().split('T')[0],
+          semestreId: semestreId
+        })
+      );
+      currentStart.setDate(currentStart.getDate() + 7);
+    }
+    await Promise.all(promises);
+  };
+
+  const generateCreneaux = async (semestreId: number) => {
+    const jours = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"];
+    const horaires = [
+      { debut: "08:00:00", fin: "09:30:00" },
+      { debut: "09:45:00", fin: "11:15:00" },
+      { debut: "11:30:00", fin: "13:00:00" },
+      { debut: "15:00:00", fin: "16:30:00" },
+      { debut: "17:00:00", fin: "18:30:00" },
+    ];
+
+    const promises = [];
+    for (const jour of jours) {
+      for (const h of horaires) {
+        promises.push(
+          creneauService.create({
+            jour: jour as "LUNDI" | "MARDI" | "MERCREDI" | "JEUDI" | "VENDREDI" | "SAMEDI",
+            heureDebut: h.debut,
+            heureFin: h.fin,
+            typeCreneau: "AUTRE",
+            semestreId,
+          })
+        );
+      }
+    }
+    await Promise.all(promises);
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.libelle.trim()) newErrors.libelle = "Le libellé est requis";
+    if (!formData.dateDebut) newErrors.dateDebut = "Date de début requise";
+    if (!formData.dateFin) newErrors.dateFin = "Date de fin requise";
+    if (formData.dateDebut && formData.dateFin && formData.dateDebut >= formData.dateFin) {
+       newErrors.dateFin = "La date de fin doit être après le début";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setIsSubmitting(true);
+    try {
+      const sem = await addSemestre({
+         libelle: formData.libelle,
+         dateDebut: formData.dateDebut,
+         dateFin: formData.dateFin
+      });
+      await generateWeeks(sem.id, new Date(formData.dateDebut), new Date(formData.dateFin));
+      await generateCreneaux(sem.id);
+      setFormData({ libelle: "S" + (semestres.length + 2), dateDebut: "", dateFin: "" });
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la création du semestre.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleContinue = () => {
+    if (semestres.length > 0) {
+      setCurrentStep("administrateurs");
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="w-6 h-6" />
+              Ajouter un Semestre
+            </CardTitle>
+            <CardDescription>
+              Définissez l'année académique et les semestres.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="sem-libelle">Libellé (ex: Semestre 1)</Label>
+                <Input
+                  id="sem-libelle"
+                  placeholder="S1"
+                  value={formData.libelle}
+                  onChange={(e) => setFormData({ ...formData, libelle: e.target.value })}
+                  className={errors.libelle ? "border-red-500" : ""}
+                />
+                {errors.libelle && <p className="text-xs text-red-500">{errors.libelle}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sem-debut">Date de début</Label>
+                  <Input
+                    id="sem-debut"
+                    type="date"
+                    value={formData.dateDebut}
+                    onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
+                    className={errors.dateDebut ? "border-red-500" : ""}
+                  />
+                  {errors.dateDebut && <p className="text-xs text-red-500">{errors.dateDebut}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sem-fin">Date de fin</Label>
+                  <Input
+                    id="sem-fin"
+                    type="date"
+                    value={formData.dateFin}
+                    onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
+                    className={errors.dateFin ? "border-red-500" : ""}
+                  />
+                  {errors.dateFin && <p className="text-xs text-red-500">{errors.dateFin}</p>}
+                </div>
+              </div>
+              <Button type="submit" className="w-full" variant="outline" disabled={isSubmitting}>
+                <Plus className="w-4 h-4 mr-2" />
+                {isSubmitting ? "Création..." : "Ajouter le Semestre et générer les semaines"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Semestres créés</CardTitle>
+            <CardDescription>
+              {semestres.length === 0
+                ? "Aucun semestre créé"
+                : `${semestres.length} semestre(s) créé(s)`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {semestres.map((sem) => (
+                <div
+                  key={sem.id}
+                  className="flex flex-col p-3 bg-muted rounded-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">{sem.libelle}</p>
+                    <Badge variant="secondary">{sem.dateDebut.split('-')[0]}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Du {new Date(sem.dateDebut).toLocaleDateString('fr-FR')} au {new Date(sem.dateFin).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {semestres.length > 0 && (
+              <div className="mt-6 flex justify-between">
+                <Button variant="outline" onClick={() => setCurrentStep("departements")}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Retour
                 </Button>
@@ -649,7 +866,7 @@ function AdministrateursStep() {
 }
 
 function SetupCompleteDashboard() {
-  const { ecoles, departements, professeurs, salles, resetSetup } = useSetup();
+  const { ecoles, departements, semestres, professeurs, salles, setCurrentStep } = useSetup();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   return (
@@ -664,7 +881,7 @@ function SetupCompleteDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <Card>
           <CardContent className="p-6 text-center">
             <School className="w-8 h-8 mx-auto mb-2 text-primary" />
@@ -678,6 +895,13 @@ function SetupCompleteDashboard() {
             <Building2 className="w-8 h-8 mx-auto mb-2 text-primary" />
             <p className="text-2xl font-bold">{departements.length}</p>
             <p className="text-sm text-muted-foreground">Département(s)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <CalendarDays className="w-8 h-8 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{semestres.length}</p>
+            <p className="text-sm text-muted-foreground">Semestre(s)</p>
           </CardContent>
         </Card>
         <Card>
@@ -758,7 +982,6 @@ function SetupCompleteDashboard() {
 
 function SetupContent() {
   const { currentStep, setCurrentStep, ecoles, departements, isInitialized } = useSetup();
-  const navigate = useNavigate();
 
   // Wait for API data to load before deciding what to show
   if (!isInitialized) {
@@ -774,7 +997,7 @@ function SetupContent() {
 
   // If data already exists, show the completed dashboard
   const hasExistingData = ecoles.length > 0 && departements.length > 0;
-  if (hasExistingData && currentStep !== "ecole" && currentStep !== "departements" && currentStep !== "administrateurs") {
+  if (hasExistingData && currentStep !== "ecole" && currentStep !== "departements" && currentStep !== "semestres" && currentStep !== "administrateurs") {
     return <SetupCompleteDashboard />;
   }
 
@@ -783,14 +1006,15 @@ function SetupContent() {
     return <SetupCompleteDashboard />;
   }
 
-  // Reset to ecole if no setup data exists (fresh start)
-  if (!hasExistingData && currentStep !== "ecole") {
+  // Reset to ecole ONLY if no école exists at all (true fresh start)
+  if (ecoles.length === 0 && currentStep !== "ecole") {
     setCurrentStep("ecole");
   }
 
   const steps = [
     { key: "ecole", label: "École", icon: School },
     { key: "departements", label: "Départements", icon: Building2 },
+    { key: "semestres", label: "Semestres", icon: CalendarDays },
     { key: "administrateurs", label: "Administrateurs", icon: Shield },
   ];
 
@@ -808,6 +1032,7 @@ function SetupContent() {
       <div className="mt-8">
         {currentStep === "ecole" && <EcoleStep />}
         {currentStep === "departements" && <DepartementsStep />}
+        {currentStep === "semestres" && <SemestresStep />}
         {currentStep === "administrateurs" && <AdministrateursStep />}
       </div>
     </div>

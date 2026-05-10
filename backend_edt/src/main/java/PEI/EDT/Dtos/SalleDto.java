@@ -15,4 +15,7 @@ public class SalleDto {
 
     private String ecoleId;        // ✅ NEW
     private Integer departementId; // can be null for AMPHI
+    
+    private Integer capacite;
+    private String equipements;
 }

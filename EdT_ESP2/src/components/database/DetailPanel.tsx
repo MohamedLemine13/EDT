@@ -8,7 +8,7 @@ interface Course {
   code: string
   title: string
   credits: number
-  coefficient: number
+
   hours: { cm: number; td: number; tp: number; total: number }
   teachers: { cm: string; td: string; tp: string }
   rooms: { cm: string; td: string; tp: string }
@@ -30,6 +30,7 @@ interface Room {
   capacity: number
   equipment: string[]
   building: string
+  departmentId?: string
 }
 
 type DetailItem = Course | Teacher | Room | null
@@ -93,10 +94,7 @@ export function DetailPanel({ item, type, onClose, onEdit, onDelete }: DetailPan
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Crédits</h4>
                 <p className="font-medium">{item.credits}</p>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Coefficient</h4>
-                <p className="font-medium">{item.coefficient}</p>
-              </div>
+
             </div>
 
             <Separator />

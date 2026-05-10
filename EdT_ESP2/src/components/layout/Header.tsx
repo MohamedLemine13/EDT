@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from './ThemeToggle'
 import { departementService, semestreService } from '@/services'
-import { useAuth } from '@/hooks/useAuth'
 
 interface DeptOption {
   id: number
@@ -21,6 +13,7 @@ interface DeptOption {
 interface SemOption {
   id: number
   libelle: string
+  dateDebut: string
 }
 
 interface HeaderProps {
@@ -44,8 +37,7 @@ export function Header({
   onWeekChange,
   showWeekNav = false,
 }: HeaderProps) {
-  const { user } = useAuth()
-  const [departments, setDepartments] = useState<DeptOption[]>([])
+  const [, setDepartments] = useState<DeptOption[]>([])
   const [semesters, setSemesters] = useState<SemOption[]>([])
 
   // Load departments and semesters from API
@@ -71,9 +63,11 @@ export function Header({
       .catch(() => setSemesters([]))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Only show dept/semester selectors for admin roles
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'CHEF_DEP' ||
-                  user?.role === 'CHEF_HE' || user?.role === 'CHEF_ST'
+
+
+  const currentSem = semesters.find(s => s.libelle === semester)
+  const startYear = currentSem?.dateDebut ? new Date(currentSem.dateDebut).getFullYear() : new Date().getFullYear()
+  const academicYear = `${startYear}-${startYear + 1}`
 
   return (
     <header className="sticky top-1 mx-2 sm:mx-4 lg:mx-6 z-30 backdrop-blur-xl bg-background/85 border border-border/40 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.18)]">
@@ -98,6 +92,16 @@ export function Header({
                 Gestion des Emplois du Temps
               </p>
             </div>
+          </div>
+
+          {/* Academic Context Display */}
+          <div className="hidden sm:flex flex-col items-end justify-center ml-auto mr-4">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Année Universitaire
+            </span>
+            <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full mt-1">
+              {academicYear} • {semester}
+            </span>
           </div>
 
           {/* Selectors with elegant styling */}

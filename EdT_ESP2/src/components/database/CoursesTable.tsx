@@ -13,7 +13,7 @@ interface Course {
   code: string
   title: string
   credits: number
-  coefficient: number
+
   hours: { cm: number; td: number; tp: number; total: number }
   teachers: { cm: string; td: string; tp: string }
   rooms: { cm: string; td: string; tp: string }
@@ -52,7 +52,7 @@ export function CoursesTable({
             <TableHead className="w-[100px]">Code</TableHead>
             <TableHead>Titre</TableHead>
             <TableHead className="text-center w-[80px]">Crédit</TableHead>
-            <TableHead className="text-center w-[80px]">Coef</TableHead>
+
             <TableHead className="text-center w-[180px]">Volume horaire</TableHead>
           </TableRow>
         </TableHeader>
@@ -86,7 +86,7 @@ export function CoursesTable({
                 </TableCell>
                 <TableCell className="font-medium">{course.title}</TableCell>
                 <TableCell className="text-center">{course.credits}</TableCell>
-                <TableCell className="text-center">{course.coefficient}</TableCell>
+
                 <TableCell>
                   <div className="flex items-center justify-center gap-1">
                     <Badge variant="secondary" className="text-[10px] bg-cell-cm/20 text-cell-cm">

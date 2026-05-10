@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import { ecoleService, departementService, professeurService, salleService } from "@/services";
-import type { CreateEcoleDto, CreateDepartementDto, CreateProfesseurDto, CreateSalleDto } from "@/types";
+import { ecoleService, departementService, semestreService, professeurService, salleService } from "@/services";
+import type { CreateEcoleDto, CreateDepartementDto, CreateSemestreDto, SemestreDto, CreateProfesseurDto, CreateSalleDto } from "@/types";
 
 export interface Ecole {
   id: string;
@@ -31,7 +31,7 @@ export interface Salle {
   departementId?: number;
 }
 
-type SetupStep = "ecole" | "departements" | "administrateurs" | "salles" | "complete";
+type SetupStep = "ecole" | "departements" | "semestres" | "administrateurs" | "salles" | "complete";
 
 interface SetupContextType {
   currentStep: SetupStep;
@@ -41,6 +41,8 @@ interface SetupContextType {
   addEcole: (ecole: Omit<Ecole, "id">) => Promise<Ecole>;
   departements: Departement[];
   addDepartement: (dept: Omit<Departement, "id">) => Promise<Departement>;
+  semestres: SemestreDto[];
+  addSemestre: (sem: CreateSemestreDto) => Promise<SemestreDto>;
   professeurs: Professeur[];
   addProfesseur: (prof: Omit<Professeur, "id">) => Promise<Professeur>;
   salles: Salle[];
@@ -63,6 +65,7 @@ export function SetupProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [ecoles, setEcoles] = useState<Ecole[]>([]);
   const [departements, setDepartements] = useState<Departement[]>([]);
+  const [semestres, setSemestres] = useState<SemestreDto[]>([]);
   const [professeurs, setProfesseurs] = useState<Professeur[]>([]);
   const [salles, setSalles] = useState<Salle[]>([]);
 
@@ -71,9 +74,10 @@ export function SetupProvider({ children }: { children: ReactNode }) {
     const loadDataFromApi = async () => {
       try {
         // Load all data from API in parallel
-        const [ecolesData, departementsData, professeursData, sallesData] = await Promise.all([
+        const [ecolesData, departementsData, semestresData, professeursData, sallesData] = await Promise.all([
           ecoleService.getAll().catch(() => []),
           departementService.getAll().catch(() => []),
+          semestreService.getAll().catch(() => []),
           professeurService.getAll().catch(() => []),
           salleService.getAll().catch(() => []),
         ]);
@@ -82,6 +86,7 @@ export function SetupProvider({ children }: { children: ReactNode }) {
         requestAnimationFrame(() => {
           setEcoles(ecolesData);
           setDepartements(departementsData);
+          setSemestres(semestresData);
           setProfesseurs(professeursData);
           setSalles(sallesData);
 
@@ -95,6 +100,8 @@ export function SetupProvider({ children }: { children: ReactNode }) {
             setCurrentStepState("ecole");
           } else if (departementsData.length === 0) {
             setCurrentStepState("departements");
+          } else if (semestresData.length === 0) {
+            setCurrentStepState("semestres");
           } else {
             setCurrentStepState("complete");
           }
@@ -113,6 +120,7 @@ export function SetupProvider({ children }: { children: ReactNode }) {
               const parsed = JSON.parse(savedData);
               setEcoles(parsed.ecoles || []);
               setDepartements(parsed.departements || []);
+              setSemestres(parsed.semestres || []);
               setProfesseurs(parsed.professeurs || []);
               setSalles(parsed.salles || []);
             } catch {
@@ -134,11 +142,12 @@ export function SetupProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         ecoles,
         departements,
+        semestres,
         professeurs,
         salles,
       }));
     }
-  }, [ecoles, departements, professeurs, salles, isInitialized]);
+  }, [ecoles, departements, semestres, professeurs, salles, isInitialized]);
 
   const setCurrentStep = useCallback((step: SetupStep) => {
     setCurrentStepState(step);
@@ -147,10 +156,10 @@ export function SetupProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addEcole = useCallback(async (ecoleData: Omit<Ecole, "id">): Promise<Ecole> => {
+  const addEcole = useCallback(async (ecoleData: Ecole | Omit<Ecole, "id"> & { id?: string }): Promise<Ecole> => {
     try {
       const dto: CreateEcoleDto = {
-        id: crypto.randomUUID().substring(0, 8).toUpperCase(),
+        id: (ecoleData as Ecole).id || crypto.randomUUID().substring(0, 8).toUpperCase(),
         nom: ecoleData.nom,
         domaine: ecoleData.domaine,
         slug: ecoleData.slug,
@@ -188,6 +197,17 @@ export function SetupProvider({ children }: { children: ReactNode }) {
       return newDept;
     } catch (error) {
       console.error("Failed to create departement:", error);
+      throw error;
+    }
+  }, []);
+
+  const addSemestre = useCallback(async (semData: CreateSemestreDto): Promise<SemestreDto> => {
+    try {
+      const created = await semestreService.create(semData);
+      setSemestres(prev => [...prev, created]);
+      return created;
+    } catch (error) {
+      console.error("Failed to create semestre:", error);
       throw error;
     }
   }, []);
@@ -247,8 +267,8 @@ export function SetupProvider({ children }: { children: ReactNode }) {
   }, [departements]);
 
   const isSetupComplete = useCallback(() => {
-    return ecoles.length > 0 && departements.length > 0 && professeurs.length > 0 && salles.length > 0;
-  }, [ecoles.length, departements.length, professeurs.length, salles.length]);
+    return ecoles.length > 0 && departements.length > 0 && semestres.length > 0 && professeurs.length > 0 && salles.length > 0;
+  }, [ecoles.length, departements.length, semestres.length, professeurs.length, salles.length]);
 
   const finishSetup = useCallback(() => {
     // Sauvegarder explicitement toutes les données avant de quitter
@@ -256,6 +276,7 @@ export function SetupProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         ecoles,
         departements,
+        semestres,
         professeurs,
         salles,
       }));
@@ -280,11 +301,12 @@ export function SetupProvider({ children }: { children: ReactNode }) {
       }
     }
     setCurrentStep("complete");
-  }, [ecoles, departements, professeurs, salles, setCurrentStep]);
+  }, [ecoles, departements, semestres, professeurs, salles, setCurrentStep]);
 
   const resetSetup = useCallback(() => {
     setEcoles([]);
     setDepartements([]);
+    setSemestres([]);
     setProfesseurs([]);
     setSalles([]);
     setCurrentStep("ecole");
@@ -305,6 +327,8 @@ export function SetupProvider({ children }: { children: ReactNode }) {
         addEcole,
         departements,
         addDepartement,
+        semestres,
+        addSemestre,
         professeurs,
         addProfesseur,
         salles,
