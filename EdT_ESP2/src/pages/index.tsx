@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -404,39 +406,131 @@ export default function EmploiPage() {
   };
 
   // Excel export
-  const handleDownloadExcel = () => {
-    const headers = ["Jour", "Créneau", "Matière", "Type", "Salle", "Enseignant"];
-    const rows = allSeances.map((s) => [
-      s.jour,
-      `${s.heureDebut}-${s.heureFin}`,
-      `${s.matiereCode} - ${s.matiereIntitule}`,
-      s.type,
-      s.salleNoms?.join(", ") || "",
-      s.professeurNoms?.join(", ") || "",
-    ]);
+  const handleDownloadExcel = async () => {
+    if (!edtData) return;
+    
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("EDT");
 
-    const escape = (str: string) => str.replace(/[<>&'"]/g, (c) =>
-      c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === "'" ? "&apos;" : "&quot;"
-    );
+    // Title Row
+    const titleRow = sheet.addRow([`Département ${edtData.departementNom} (${edtData.departementCode})`]);
+    titleRow.font = { bold: true, size: 14 };
+    titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 30;
+    
+    // Subtitle Row
+    const semesterLabel = semestres.find(s => s.id === Number(selectedSemestre))?.libelle || selectedSemestre;
+    const dateStr = currentSemaine?.dateDebut && currentSemaine?.dateFin 
+      ? `du ${new Date(currentSemaine.dateDebut).toLocaleDateString('fr-FR')} au ${new Date(currentSemaine.dateFin).toLocaleDateString('fr-FR')}` 
+      : "";
+    
+    const subTitleRow = sheet.addRow([`Semestre : ${semesterLabel}`, '', '', `Semaine : ${selectedSemaine}`, '', dateStr]);
+    subTitleRow.font = { bold: true, color: { argb: 'FFFF0000' } };
+    subTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    subTitleRow.height = 25;
 
-    const xml = `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-<Worksheet ss:Name="EDT">
-<Table>
-  <Row>${headers.map((h) => `<Cell><Data ss:Type="String">${escape(h)}</Data></Cell>`).join("")}</Row>
-${rows.map((row) => `  <Row>${row.map((c) => `<Cell><Data ss:Type="String">${escape(String(c))}</Data></Cell>`).join("")}</Row>`).join("\n")}
-</Table>
-</Worksheet>
-</Workbook>`;
+    sheet.addRow([]); // Empty row
 
-    const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `EDT_${edtData?.departementCode || "dept"}_S${selectedSemaine}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Time slots header
+    const headerRowValues = [''];
+    timeSlots.forEach(slot => {
+      headerRowValues.push(slot.label);
+    });
+    const headerRow = sheet.addRow(headerRowValues);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    headerRow.height = 25;
+
+    // Merge title
+    const totalCols = timeSlots.length + 1;
+    sheet.mergeCells(1, 1, 1, totalCols);
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB7DEE8' } };
+    titleRow.getCell(1).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+    // Column widths
+    sheet.getColumn(1).width = 15; // Day column
+    for (let i = 2; i <= totalCols; i++) {
+      sheet.getColumn(i).width = 25;
+    }
+
+    // Colors
+    const getBgColor = (type: string) => {
+      if (type === "DEP") return 'FF92D050'; // Light green
+      if (type === "HE" || type === "ST") return 'FF8DB4E2'; // Light blue
+      return 'FFFFC000'; // Yellow
+    };
+
+    // Header styling
+    headerRow.eachCell((cell, colNumber) => {
+      if (colNumber > 1) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB7DEE8' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      }
+    });
+
+    // Data rows
+    DAYS_ORDER.forEach((day) => {
+      // FIX: DAY_LABELS keys are lowercase ("lundi", "mardi", etc.)
+      const dayLabel = DAY_LABELS[day.toLowerCase() as DayName] || day;
+      const rowData = [dayLabel];
+      
+      timeSlots.forEach(slot => {
+        const seances = getSeances(day, slot.start, slot.end);
+        if (seances.length > 0) {
+          // We will use richText below, so just push a placeholder here to create the cells
+          rowData.push(' ');
+        } else {
+          rowData.push('');
+        }
+      });
+      
+      const row = sheet.addRow(rowData);
+      row.height = 80;
+      
+      // Day cell styling
+      const dayCell = row.getCell(1);
+      dayCell.font = { bold: true };
+      dayCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      dayCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB7DEE8' } };
+      dayCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+      // Data cell styling
+      for (let i = 2; i <= totalCols; i++) {
+        const cell = row.getCell(i);
+        const seances = getSeances(day, timeSlots[i-2].start, timeSlots[i-2].end);
+        const creneau = findCreneau(day, timeSlots[i-2].start, timeSlots[i-2].end);
+        
+        cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        
+        if (seances.length > 0) {
+          // Use the creneau type for background color
+          const type = creneau?.typeCreneau || "AUTRE";
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: getBgColor(type) } };
+
+          // Build rich text for seances
+          const richText: any[] = [];
+          seances.forEach((s, idx) => {
+             if (idx > 0) richText.push({ text: '\n\n---\n\n' });
+             
+             const sallesRaw = s.salleNoms?.join(", ") || "";
+             const salles = sallesRaw.toLowerCase().includes("salle") ? sallesRaw : (sallesRaw ? `salle ${sallesRaw}` : "");
+             const profs = s.professeurNoms?.join(", ") || "Enseignants du dpt.";
+             
+             richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereCode}      ${s.type}      ${salles}\n` });
+             richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereIntitule}\n` });
+             richText.push({ font: { italic: false, color: { argb: 'FF000000' } }, text: profs });
+          });
+          cell.value = { richText };
+        } else {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } }; // Grey
+        }
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `EDT_${edtData?.departementCode || "dept"}_S${selectedSemaine}.xlsx`);
   };
 
   return (
