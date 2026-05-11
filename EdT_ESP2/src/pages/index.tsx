@@ -40,6 +40,7 @@ import type {
   MatiereDto,
   ProfesseurDto,
   SalleDto,
+  EvenementCalendrierDto,
 } from "@/types";
 import {
   edtService,
@@ -52,6 +53,7 @@ import {
   matiereService,
   professeurService,
   salleService,
+  calendrierService,
 } from "@/services";
 import { Input } from "@/components/ui/input";
 import { useAppState } from "@/hooks/useAppState";
@@ -140,6 +142,8 @@ export default function EmploiPage() {
   const [formTag, setFormTag] = useState("");
   const [formIsCommun, setFormIsCommun] = useState(false);
 
+  const [events, setEvents] = useState<EvenementCalendrierDto[]>([]);
+
   // Load initial data
   useEffect(() => {
     Promise.all([
@@ -168,10 +172,12 @@ export default function EmploiPage() {
     Promise.all([
       semaineService.getAll(Number(selectedSemestre)),
       creneauService.getAll(Number(selectedSemestre)),
-    ]).then(([sem, cren]) => {
+      calendrierService.getAll({ semestreId: Number(selectedSemestre) })
+    ]).then(([sem, cren, evs]) => {
       const sortedSem = sem.sort((a, b) => a.numeroSemaine - b.numeroSemaine);
       setSemaines(sortedSem);
       setCreneaux(cren);
+      setEvents(evs);
       if (sortedSem.length > 0) setSelectedSemaine(String(sortedSem[0].numeroSemaine));
     }).catch(() => setError("Impossible de charger les semaines"));
   }, [selectedSemestre]);
@@ -218,6 +224,29 @@ export default function EmploiPage() {
 
   const currentSemaine = semaines.find((s) => String(s.numeroSemaine) === selectedSemaine);
 
+  const getHolidayForDay = useCallback((dayName: BackendDay) => {
+    if (!currentSemaine) return null;
+    const dayOffsets: Record<BackendDay, number> = {
+      "LUNDI": 0, "MARDI": 1, "MERCREDI": 2, "JEUDI": 3, "VENDREDI": 4, "SAMEDI": 5
+    };
+    const offset = dayOffsets[dayName];
+    
+    // Parse Date without timezone shifting
+    const [year, month, day] = currentSemaine.dateDebut.split('-').map(Number);
+    const dayDate = new Date(year, month - 1, day);
+    dayDate.setDate(dayDate.getDate() + offset);
+    
+    const y = dayDate.getFullYear();
+    const m = String(dayDate.getMonth() + 1).padStart(2, '0');
+    const d = String(dayDate.getDate()).padStart(2, '0');
+    const isoDate = `${y}-${m}-${d}`;
+    
+    return events.find(ev => {
+      const evStart = ev.dateDebut;
+      const evEnd = ev.dateFin || ev.dateDebut;
+      return isoDate >= evStart && isoDate <= evEnd;
+    });
+  }, [currentSemaine, events]);
   // Handle empty cell click → open create dialog with all fields
   const handleEmptyCellClick = (day: BackendDay, start: string, end: string) => {
     const creneau = findCreneau(day, start, end);
@@ -271,7 +300,7 @@ export default function EmploiPage() {
       }
       await Promise.all(promises);
       setIsCreneauxOpen(false);
-      
+
       const newCren = await creneauService.getAll(Number(selectedSemestre));
       setCreneaux(newCren);
       fetchEdt();
@@ -408,7 +437,7 @@ export default function EmploiPage() {
   // Excel export
   const handleDownloadExcel = async () => {
     if (!edtData) return;
-    
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("EDT");
 
@@ -417,13 +446,13 @@ export default function EmploiPage() {
     titleRow.font = { bold: true, size: 14 };
     titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
     titleRow.height = 30;
-    
+
     // Subtitle Row
     const semesterLabel = semestres.find(s => s.id === Number(selectedSemestre))?.libelle || selectedSemestre;
-    const dateStr = currentSemaine?.dateDebut && currentSemaine?.dateFin 
-      ? `du ${new Date(currentSemaine.dateDebut).toLocaleDateString('fr-FR')} au ${new Date(currentSemaine.dateFin).toLocaleDateString('fr-FR')}` 
+    const dateStr = currentSemaine?.dateDebut && currentSemaine?.dateFin
+      ? `du ${new Date(currentSemaine.dateDebut).toLocaleDateString('fr-FR')} au ${new Date(currentSemaine.dateFin).toLocaleDateString('fr-FR')}`
       : "";
-    
+
     const subTitleRow = sheet.addRow([`Semestre : ${semesterLabel}`, '', '', `Semaine : ${selectedSemaine}`, '', dateStr]);
     subTitleRow.font = { bold: true, color: { argb: 'FFFF0000' } };
     subTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -473,7 +502,7 @@ export default function EmploiPage() {
       // FIX: DAY_LABELS keys are lowercase ("lundi", "mardi", etc.)
       const dayLabel = DAY_LABELS[day.toLowerCase() as DayName] || day;
       const rowData = [dayLabel];
-      
+
       timeSlots.forEach(slot => {
         const seances = getSeances(day, slot.start, slot.end);
         if (seances.length > 0) {
@@ -483,10 +512,10 @@ export default function EmploiPage() {
           rowData.push('');
         }
       });
-      
+
       const row = sheet.addRow(rowData);
       row.height = 80;
-      
+
       // Day cell styling
       const dayCell = row.getCell(1);
       dayCell.font = { bold: true };
@@ -497,12 +526,12 @@ export default function EmploiPage() {
       // Data cell styling
       for (let i = 2; i <= totalCols; i++) {
         const cell = row.getCell(i);
-        const seances = getSeances(day, timeSlots[i-2].start, timeSlots[i-2].end);
-        const creneau = findCreneau(day, timeSlots[i-2].start, timeSlots[i-2].end);
-        
+        const seances = getSeances(day, timeSlots[i - 2].start, timeSlots[i - 2].end);
+        const creneau = findCreneau(day, timeSlots[i - 2].start, timeSlots[i - 2].end);
+
         cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        
+
         if (seances.length > 0) {
           // Use the creneau type for background color
           const type = creneau?.typeCreneau || "AUTRE";
@@ -511,15 +540,20 @@ export default function EmploiPage() {
           // Build rich text for seances
           const richText: any[] = [];
           seances.forEach((s, idx) => {
-             if (idx > 0) richText.push({ text: '\n\n---\n\n' });
-             
-             const sallesRaw = s.salleNoms?.join(", ") || "";
-             const salles = sallesRaw.toLowerCase().includes("salle") ? sallesRaw : (sallesRaw ? `salle ${sallesRaw}` : "");
-             const profs = s.professeurNoms?.join(", ") || "Enseignants du dpt.";
-             
-             richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereCode}      ${s.type}      ${salles}\n` });
-             richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereIntitule}\n` });
-             richText.push({ font: { italic: false, color: { argb: 'FF000000' } }, text: profs });
+            if (idx > 0) richText.push({ text: '\n\n---\n\n' });
+
+            const sallesRaw = s.salleNoms?.join(", ") || "";
+            const salles = sallesRaw.toLowerCase().includes("salle") ? sallesRaw : (sallesRaw ? `salle ${sallesRaw}` : "");
+            const profs = s.professeurNoms?.join(", ") || "Enseignants du dpt.";
+
+            richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereCode}      ${s.type}      ${salles}\n` });
+            
+            if (s.tag) {
+              richText.push({ font: { italic: true, color: { argb: 'FF000000' } }, text: `${s.tag}\n` });
+            }
+            
+            richText.push({ font: { bold: true, color: { argb: 'FF000000' } }, text: `${s.matiereIntitule}\n` });
+            richText.push({ font: { italic: false, color: { argb: 'FF000000' } }, text: profs });
           });
           cell.value = { richText };
         } else {
@@ -649,14 +683,18 @@ export default function EmploiPage() {
                       const creneau = findCreneau(day, slot.start, slot.end);
                       const type = creneau?.typeCreneau || "AUTRE";
                       const role = user?.role || "USER";
+                      const holiday = getHolidayForDay(day);
+
                       let hasAccess = true;
                       if (role === "CHEF_DEP" && type !== "DEP") hasAccess = false;
                       if (role === "CHEF_HE" && type !== "HE") hasAccess = false;
                       if (role === "CHEF_ST" && type !== "ST") hasAccess = false;
 
                       let cellClass = "h-full rounded-md transition-colors flex items-center justify-center border";
-                      
-                      if (!hasAccess) {
+
+                      if (holiday) {
+                        cellClass += " bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-80";
+                      } else if (!hasAccess) {
                         cellClass += " bg-slate-100/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-50";
                       } else {
                         cellClass += " cursor-pointer";
@@ -677,19 +715,23 @@ export default function EmploiPage() {
                                 <div
                                   key={seance.id}
                                   onClick={() => { setSelectedSeance(seance); setIsDetailOpen(true); }}
-                                  className={`h-full block p-2 rounded-md text-xs cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
-                                    type === "DEP"
+                                  className={`h-full block p-2 rounded-md text-xs cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${type === "DEP"
                                       ? "bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700"
                                       : type === "HE" || type === "ST"
-                                      ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700"
-                                      : "bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700"
-                                  } ${seance.statut === "ANNULEE" ? "opacity-60" : ""}`}
+                                        ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700"
+                                        : "bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700"
+                                    } ${seance.statut === "ANNULEE" ? "opacity-60" : ""}`}
                                 >
                                   <div className="flex items-center justify-between mb-1">
                                     {getTypeBadge(seance.type)}
                                     {getStatusBadge(seance.statut)}
                                   </div>
                                   <p className="font-semibold truncate">{seance.matiereCode}</p>
+                                  {seance.tag && (
+                                    <div className="font-medium text-[11px] truncate italic text-muted-foreground mt-0.5">
+                                      {seance.tag}
+                                    </div>
+                                  )}
                                   <div className="flex items-center gap-1 font-medium text-[11px] truncate mt-0.5" title={seance.professeurNoms?.join(", ")}>
                                     <User className="w-3 h-3 flex-shrink-0" />
                                     <span className="truncate">{seance.professeurNoms?.join(", ")}</span>
@@ -703,29 +745,35 @@ export default function EmploiPage() {
                             </div>
                           ) : (
                             <div
-                              onClick={() => { if (hasAccess) handleEmptyCellClick(day, slot.start, slot.end); }}
+                              onClick={() => { if (hasAccess && !holiday) handleEmptyCellClick(day, slot.start, slot.end); }}
                               className={`${cellClass} relative group`}
-                              title={hasAccess ? `Ajouter une séance (${type})` : "Non autorisé"}
+                              title={holiday ? holiday.titre : (hasAccess ? `Ajouter une séance (${type})` : "Non autorisé")}
                             >
-                              <Plus className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/70" />
-                              
-                              {role === "ADMIN" && creneau && (
-                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                  <Select 
-                                    value={type} 
-                                    onValueChange={(val) => handleInlineTypeChange(creneau.id, val, creneau)}
-                                  >
-                                    <SelectTrigger className="h-5 w-[65px] text-[9px] px-1 py-0 shadow-sm border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 rounded-sm">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="DEP" className="text-[10px]">DEP</SelectItem>
-                                      <SelectItem value="HE" className="text-[10px]">HE</SelectItem>
-                                      <SelectItem value="ST" className="text-[10px]">ST</SelectItem>
-                                      <SelectItem value="AUTRE" className="text-[10px]">AUTRE</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                              {holiday ? (
+                                <span className="font-bold text-[10px] text-slate-500 text-center px-1 uppercase tracking-wider">{holiday.titre}</span>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/70" />
+    
+                                  {role === "ADMIN" && creneau && (
+                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                      <Select
+                                        value={type}
+                                        onValueChange={(val) => handleInlineTypeChange(creneau.id, val, creneau)}
+                                      >
+                                        <SelectTrigger className="h-5 w-[65px] text-[9px] px-1 py-0 shadow-sm border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 rounded-sm">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="DEP" className="text-[10px]">DEP</SelectItem>
+                                          <SelectItem value="HE" className="text-[10px]">HE</SelectItem>
+                                          <SelectItem value="ST" className="text-[10px]">ST</SelectItem>
+                                          <SelectItem value="AUTRE" className="text-[10px]">AUTRE</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
@@ -860,10 +908,10 @@ export default function EmploiPage() {
                         return true;
                       })
                       .map((a) => (
-                      <SelectItem key={a.id} value={String(a.id)}>
-                        {a.matiereCode} ({a.type}) — {a.professeurNoms?.join(", ")} — {a.salleNoms?.join(", ")}
-                      </SelectItem>
-                    ))}
+                        <SelectItem key={a.id} value={String(a.id)}>
+                          {a.matiereCode} ({a.type}) — {a.professeurNoms?.join(", ")} — {a.salleNoms?.join(", ")}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

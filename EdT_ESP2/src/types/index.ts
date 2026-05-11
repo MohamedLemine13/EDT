@@ -367,6 +367,16 @@ export interface UserDto {
   mustChangePassword: boolean;
 }
 
+export interface CreateUserRequest {
+  nom: string;
+  prenom: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  departementId?: number;
+  professeurId?: number;
+}
+
 // ==========================================
 // DTOs Spring Boot Complets
 // ==========================================

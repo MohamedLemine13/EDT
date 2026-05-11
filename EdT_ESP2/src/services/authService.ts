@@ -3,6 +3,7 @@ import type {
   LoginRequest,
   AuthResponse,
   UserDto,
+  CreateUserRequest,
 } from "../types";
 
 const AUTH_BASE = "/auth";
@@ -20,6 +21,12 @@ export const authService = {
   // Profil connecté
   me: async (): Promise<UserDto> => {
     const response = await api.get<UserDto>(`${AUTH_BASE}/me`);
+    return response.data;
+  },
+
+  // Créer un utilisateur (Admin only) — uses /api/admin/users
+  register: async (data: CreateUserRequest): Promise<UserDto> => {
+    const response = await api.post<UserDto>("/admin/users", data);
     return response.data;
   },
 
