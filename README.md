@@ -14,7 +14,7 @@ Assurez-vous d'avoir Java et Maven installés, ainsi qu'une base de données Pos
    ```
 2. (Facultatif) Pour réinitialiser la base de données avec les données de base (départements, professeurs, salles, matières) :
    ```bash
-   PGPASSWORD=00000000 psql -U postgres -h localhost -d emploi_du_temps -f src/main/resources/data.sql
+   PGPASSWORD=00000000 psql -U postgres -h localhost -d emploi_du_temps -f src/main/resources/clean_start.sql
    ```
 3. Lancez le serveur :
    ```bash
