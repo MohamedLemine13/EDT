@@ -9,6 +9,7 @@ export type Path =
   | `/bilan`
   | `/calendrier`
   | `/change-password`
+  | `/emplois`
   | `/etudiant/calendrier`
   | `/etudiant/emploi-du-temps`
   | `/etudiant/matieres`
@@ -19,8 +20,7 @@ export type Path =
   | `/professeur/seances/:id`
   | `/professeur/volume-horaire`
   | `/register`
-  | `/setup`
-  | `/setup/complete`
+  | `/super-admin`
   | `/test-api`
   | `/utilisateurs`
 

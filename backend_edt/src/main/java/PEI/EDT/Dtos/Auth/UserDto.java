@@ -12,5 +12,6 @@ public class UserDto {
     private String email;
     private String role;
     private Integer departementId; // nullable
+    private String ecoleId; // nullable — only for ADMIN role
     private boolean mustChangePassword;
 }

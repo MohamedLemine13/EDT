@@ -21,6 +21,7 @@ export { default as edtService } from "./edtService";
 export { default as calendrierService } from "./calendrierService";
 export { default as bilanService } from "./bilanService";
 export { default as userService } from "./userService";
+export { superAdminService } from "./superAdminService";
 
 // Service de setup (localStorage - pour démo/mock)
 export * from "./setupService";

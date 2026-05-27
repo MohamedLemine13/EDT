@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BookOpen, Calendar, LayoutGrid, GraduationCap, Info, List, Loader2, AlertCircle } from 'lucide-react'
+import { BookOpen, Calendar, LayoutGrid, GraduationCap, Info, List, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
 import { PlanningMatrix } from '@/components/planning/PlanningMatrix'
 import { CourseLegend } from '@/components/planning/CourseLegend'
 import { AddEntryDialog } from '@/components/planning/AddEntryDialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   semestreService,
   semaineService,
@@ -43,6 +45,19 @@ interface PlanningEntry {
   code: string
   type: string
   seanceId?: number // Track the real backend id
+}
+
+function fmtTime(t: string) { return t.length > 5 ? t.substring(0, 5) : t; }
+
+function getTimeSlotsFromCreneaux(creneaux: CreneauDto[]): { label: string; start: string; end: string; type: string }[] {
+  const set = new Map<string, { start: string; end: string; type: string }>();
+  creneaux.forEach((c) => {
+    const key = `${c.heureDebut}-${c.heureFin}`;
+    if (!set.has(key)) set.set(key, { start: c.heureDebut, end: c.heureFin, type: c.typeCreneau || "AUTRE" });
+  });
+  return Array.from(set.entries())
+    .sort(([, a], [, b]) => a.start.localeCompare(b.start))
+    .map(([, v]) => ({ label: `${fmtTime(v.start)}-${fmtTime(v.end)}`, start: v.start, end: v.end, type: v.type }));
 }
 
 interface SimpleCourse {
@@ -96,10 +111,12 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null)
   const [highlightedCourse, setHighlightedCourse] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<string>('matrix')
-  const [, setSaving] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [isCreneauxOpen, setIsCreneauxOpen] = useState(false)
+  const [editingSlots, setEditingSlots] = useState<{ id: string, oldStart: string, oldEnd: string, newStart: string, newEnd: string, newType: string }[]>([])
   const [pendingSlot, setPendingSlot] = useState<{
     week: number; dayIndex: number; slotIndex: number; day: string; slot: string
   } | null>(null)
@@ -249,11 +266,72 @@ export default function PlanPage() {
   }
 
 
-  // Handle add from the PlanningMatrix (old interface)
+  const [bulkSelectedCells, setBulkSelectedCells] = useState<{week: number, dayIndex: number, slotIndex: number}[]>([])
+
+  // Creneaux Management
+  const handleOpenCreneaux = () => {
+    const unique = getTimeSlotsFromCreneaux(creneaux);
+    setEditingSlots(unique.map(u => ({ id: u.label, oldStart: u.start, oldEnd: u.end, newStart: u.start, newEnd: u.end, newType: u.type })));
+    setIsCreneauxOpen(true);
+  };
+
+  const handleSaveCreneaux = async () => {
+    setSaving(true);
+    try {
+      const promises = [];
+      for (const slot of editingSlots) {
+        if (slot.oldStart !== slot.newStart || slot.oldEnd !== slot.newEnd || slot.newType !== "AUTRE") {
+          const matching = creneaux.filter(c => c.heureDebut === slot.oldStart && c.heureFin === slot.oldEnd);
+          for (const c of matching) {
+            if (slot.oldStart === slot.newStart && slot.oldEnd === slot.newEnd && slot.newType === c.typeCreneau) continue;
+            promises.push(creneauService.update(c.id, {
+              jour: c.jour,
+              heureDebut: slot.newStart + (slot.newStart.length === 5 ? ":00" : ""),
+              heureFin: slot.newEnd + (slot.newEnd.length === 5 ? ":00" : ""),
+              typeCreneau: slot.newType as "DEP" | "HE" | "ST" | "AUTRE",
+              semestreId: c.semestreId
+            }));
+          }
+        }
+      }
+      await Promise.all(promises);
+      setIsCreneauxOpen(false);
+
+      const newCren = await creneauService.getAll(Number(selectedSemestre));
+      setCreneaux(newCren);
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors de la modification des horaires");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle add from the PlanningMatrix
   const handleAddEntry = (entry: PlanningEntry) => {
     // This is the old local-only add. We no longer use it.
     // Instead, the matrix opens the dialog and we handle creation there.
     console.log('handleAddEntry called (legacy):', entry)
+  }
+
+  const handleBulkSelect = (cells: {week: number, dayIndex: number, slotIndex: number}[], typeCreneau: string) => {
+    if (cells.length === 0) return
+    setBulkSelectedCells(cells)
+    
+    // We set pendingSlot to the first cell just to satisfy handleEditCreneau's guard
+    const firstCell = cells[0]
+    setPendingSlot({
+      week: firstCell.week,
+      dayIndex: firstCell.dayIndex,
+      slotIndex: firstCell.slotIndex,
+      day: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][firstCell.dayIndex],
+      slot: SLOT_TIMES[firstCell.slotIndex],
+    })
+    
+    // Immediately trigger the update using the chosen type from the toolbar
+    setTimeout(() => {
+      handleEditCreneau(typeCreneau)
+    }, 0)
   }
 
   // Handle actual seance creation from the dialog
@@ -266,39 +344,94 @@ export default function PlanPage() {
     isCommun: boolean
     departementIds: number[]
   }) => {
-    if (!pendingSlot) return
-
-    const creneauId = findCreneauId(pendingSlot.dayIndex, pendingSlot.slotIndex)
-    const semaineId = findSemaineId(pendingSlot.week)
-
-    if (!creneauId || !semaineId) {
-      setError('Créneau ou semaine introuvable pour cette cellule')
-      return
-    }
+    if (bulkSelectedCells.length === 0) return
 
     setSaving(true)
+    setError(null)
+    
+    let successCount = 0;
     try {
-      const dto: CreateSeanceRequestDto = {
-        type: data.type as 'CM' | 'TD' | 'TP',
-        statut: 'PLANIFIEE',
-        creneauId,
-        matiereCode: data.matiereCode,
-        salleIds: data.salleIds,
-        semaineId: semaineId,
-        professeurIds: data.professeurIds,
-        isCommun: data.isCommun,
-        tag: data.tag,
-        departementIds: data.departementIds,
+      // Create a seance for every selected cell
+      for (const cell of bulkSelectedCells) {
+        const creneauId = findCreneauId(cell.dayIndex, cell.slotIndex)
+        const semaineId = findSemaineId(cell.week)
+
+        if (!creneauId || !semaineId) {
+          continue; // skip invalid cells
+        }
+
+        const dto: CreateSeanceRequestDto = {
+          type: data.type as 'CM' | 'TD' | 'TP',
+          statut: 'PLANIFIEE',
+          creneauId,
+          matiereCode: data.matiereCode,
+          salleIds: data.salleIds,
+          semaineId: semaineId,
+          professeurIds: data.professeurIds,
+          isCommun: data.isCommun,
+          tag: data.tag,
+          departementIds: data.departementIds,
+        }
+        await seanceService.create(dto)
+        successCount++;
       }
-      await seanceService.create(dto)
+      
       setDialogOpen(false)
       setPendingSlot(null)
+      setBulkSelectedCells([])
       fetchSeances()
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } } }
-      setError(apiErr.response?.data?.message || 'Erreur lors de la création')
+      setError(apiErr.response?.data?.message || `Erreur après avoir créé ${successCount} séances`)
+      if (successCount > 0) fetchSeances() // Refresh what succeeded
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleEditCreneau = async (typeCreneau: string) => {
+    if (!pendingSlot) return
+    setSaving(true)
+    setError(null)
+    
+    const cellsToUpdate = bulkSelectedCells.length > 0 
+      ? bulkSelectedCells 
+      : [{ week: pendingSlot.week, dayIndex: pendingSlot.dayIndex, slotIndex: pendingSlot.slotIndex }]
+
+    const creneauIdsToUpdate = new Set<number>()
+    const dayNames = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI']
+    
+    cellsToUpdate.forEach(cell => {
+      const jour = dayNames[cell.dayIndex]
+      const fullTime = SLOT_TIMES[cell.slotIndex] // e.g. "08:00:00"
+      const shortTime = fullTime.substring(0, 5) // e.g. "08:00"
+      const matchingCreneau = creneaux.find(c => 
+        c.jour === jour && (c.heureDebut === fullTime || c.heureDebut === shortTime || c.heureDebut.startsWith(shortTime))
+      )
+      if (matchingCreneau) {
+        creneauIdsToUpdate.add(matchingCreneau.id)
+      }
+    })
+
+    try {
+      const ids = Array.from(creneauIdsToUpdate)
+      console.log('Bulk updating creneaux:', { ids, typeCreneau, cellsToUpdate: cellsToUpdate.length })
+      if (ids.length > 0) {
+        await creneauService.bulkUpdateType(ids, typeCreneau)
+        const newCren = await creneauService.getAll(Number(selectedSemestre))
+        setCreneaux(newCren)
+      } else {
+        console.warn('No matching creneaux found for cells:', cellsToUpdate)
+        setError("Aucun créneau trouvé pour les cellules sélectionnées")
+      }
+    } catch (err: unknown) {
+      console.error('bulkUpdateType error:', err)
+      setError("Erreur lors de la mise à jour des créneaux")
+    } finally {
+      setSaving(false)
+      setDialogOpen(false)
+      setPendingSlot(null)
+      setBulkSelectedCells([])
     }
   }
 
@@ -343,6 +476,9 @@ export default function PlanPage() {
             <Calendar className="h-3 w-3 mr-1" />
             {stats.totalEntries} séances
           </Badge>
+          <Button variant="outline" size="sm" onClick={handleOpenCreneaux} title="Gérer les horaires">
+            <Clock className="h-4 w-4 mr-1" /> Horaires
+          </Button>
         </div>
       </div>
 
@@ -436,6 +572,7 @@ export default function PlanPage() {
                   </CardHeader>
                   <CardContent>
                     <PlanningMatrix
+                      creneaux={creneaux}
                       schedule={schedule}
                       courses={courses}
                       weeks={totalWeeks}
@@ -445,6 +582,7 @@ export default function PlanPage() {
                       highlightedCourse={highlightedCourse}
                       onCourseHover={setHighlightedCourse}
                       onAddEntry={handleAddEntry}
+                      onBulkSelect={handleBulkSelect}
                     />
                   </CardContent>
                 </Card>
@@ -482,6 +620,7 @@ export default function PlanPage() {
               </CardHeader>
               <CardContent className="pt-4">
                 <PlanningMatrix
+                  creneaux={creneaux}
                   schedule={schedule}
                   courses={courses}
                   weeks={totalWeeks}
@@ -491,6 +630,7 @@ export default function PlanPage() {
                   highlightedCourse={highlightedCourse}
                   onCourseHover={setHighlightedCourse}
                   onAddEntry={handleAddEntry}
+                  onBulkSelect={handleBulkSelect}
                 />
               </CardContent>
             </Card>
@@ -548,11 +688,13 @@ export default function PlanPage() {
       {/* Rich Add Entry Dialog */}
       <AddEntryDialog
         isOpen={dialogOpen}
-        onClose={() => { setDialogOpen(false); setPendingSlot(null) }}
+        onClose={() => {
+          setDialogOpen(false)
+          setPendingSlot(null)
+          setBulkSelectedCells([])
+        }}
         onAdd={(code: string, type: string) => {
-          // Quick add from legacy interface
           if (pendingSlot) {
-            // Find a matching affectation
             const aff = affectations.find(a => a.matiereCode === code && a.type === type)
             if (aff) {
               handleCreateSeance({
@@ -566,11 +708,66 @@ export default function PlanPage() {
             }
           }
         }}
+        onEditCreneau={handleEditCreneau}
         courses={courses}
         week={pendingSlot?.week ?? 0}
-        day={pendingSlot?.day ?? ''}
-        slot={pendingSlot?.slot ?? ''}
+        day={bulkSelectedCells.length > 1 ? `${bulkSelectedCells.length} cellules sélectionnées` : pendingSlot?.day ?? ''}
+        slot={bulkSelectedCells.length > 1 ? 'Créneaux multiples' : pendingSlot?.slot ?? ''}
+        isBulk={bulkSelectedCells.length > 1}
       />
+
+      {/* Manage Creneaux Dialog */}
+      <Dialog open={isCreneauxOpen} onOpenChange={setIsCreneauxOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gérer les horaires</DialogTitle>
+            <DialogDescription>
+              Modifiez les heures de début et de fin des créneaux de ce semestre.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            {editingSlots.map((slot, index) => (
+              <div key={slot.id} className="grid grid-cols-[auto_1fr_auto_1fr_minmax(100px,120px)] items-center gap-3 bg-muted/50 p-2 rounded-lg">
+                <span className="text-sm font-medium w-16 text-muted-foreground">Créneau {index + 1}</span>
+                <Input type="time" value={slot.newStart.substring(0, 5)} onChange={(e) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newStart = e.target.value;
+                  setEditingSlots(newSlots);
+                }} />
+                <span className="text-muted-foreground">-</span>
+                <Input type="time" value={slot.newEnd.substring(0, 5)} onChange={(e) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newEnd = e.target.value;
+                  setEditingSlots(newSlots);
+                }} />
+                <Select value={slot.newType} onValueChange={(val) => {
+                  const newSlots = [...editingSlots];
+                  newSlots[index].newType = val;
+                  setEditingSlots(newSlots);
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEP">DEP</SelectItem>
+                    <SelectItem value="HE">HE</SelectItem>
+                    <SelectItem value="ST">ST</SelectItem>
+                    <SelectItem value="AUTRE">AUTRE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+            {editingSlots.length === 0 && (
+              <p className="text-sm text-muted-foreground">Aucun créneau configuré.</p>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsCreneauxOpen(false)} disabled={saving}>Annuler</Button>
+              <Button onClick={handleSaveCreneaux} disabled={saving || editingSlots.length === 0}>
+                {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Enregistrer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

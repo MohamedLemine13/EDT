@@ -238,13 +238,12 @@ export default function ProfesseurEmploiDuTemps() {
                                 <Link
                                   key={seance.id}
                                   to={`/professeur/seances/${seance.id}`}
-                                  className={`h-full block p-2 rounded-md text-xs transition-all hover:shadow-md ${
-                                    seance.statut === "REALISEE"
+                                  className={`h-full block p-2 rounded-md text-xs transition-all hover:shadow-md ${seance.statut === "REALISEE"
                                       ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
                                       : seance.statut === "ANNULEE"
-                                      ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 opacity-60"
-                                      : "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                                  }`}
+                                        ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 opacity-60"
+                                        : "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                                    }`}
                                 >
                                   <div className="flex items-center justify-between mb-1">
                                     {getTypeBadge(seance.type)}

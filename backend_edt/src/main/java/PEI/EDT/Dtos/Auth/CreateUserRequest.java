@@ -19,4 +19,7 @@ public class CreateUserRequest {
 
     // Optional: link to an existing Professeur profile
     private Integer professeurId;
+
+    // Required for ADMIN role — links to an Ecole
+    private String ecoleId;
 }

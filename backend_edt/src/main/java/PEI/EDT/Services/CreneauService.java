@@ -85,6 +85,21 @@ public class CreneauService {
         return toDto(creneauRepo.save(c));
     }
 
+    public List<CreneauDto> bulkUpdateType(List<Integer> creneauIds, String typeCreneau) {
+        if (creneauIds == null || creneauIds.isEmpty()) {
+            throw new BadRequestException("creneauIds must not be empty.");
+        }
+        TypeCreneau type = parseTypeCreneau(typeCreneau);
+
+        List<Creneau> creneaux = creneauRepo.findAllById(creneauIds);
+        if (creneaux.size() != creneauIds.size()) {
+            throw new BadRequestException("Some creneau IDs were not found.");
+        }
+
+        creneaux.forEach(c -> c.setTypeCreneau(type));
+        return creneauRepo.saveAll(creneaux).stream().map(this::toDto).toList();
+    }
+
     public void delete(Integer id) {
         if (!creneauRepo.existsById(id)) {
             throw new ResourceNotFoundException("Creneau not found: " + id);

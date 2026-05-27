@@ -16,10 +16,15 @@ ALTER SEQUENCE IF EXISTS affectation_enseignement_id_seq RESTART WITH 1;
 ALTER SEQUENCE IF EXISTS utilisateur_id_seq RESTART WITH 1;
 ALTER SEQUENCE IF EXISTS evenement_calendrier_id_seq RESTART WITH 1;
 
--- Insert ONLY the Admin user so you can log in
-INSERT INTO utilisateur (id, nom, prenom, email, password, role, departement_id, professeur_id) VALUES
+-- Drop the old role check constraint (it was created without SUPER_ADMIN)
+-- Hibernate will re-create it with the correct values on next startup.
+ALTER TABLE utilisateur DROP CONSTRAINT IF EXISTS utilisateur_role_check;
+
+-- Insert the Super Admin user so you can log in
+-- Password: admin (bcrypt hash)
+INSERT INTO utilisateur (id, nom, prenom, email, password, role, departement_id, professeur_id, ecole_id, must_change_password) VALUES
 (1, 'Admin', 'Super', 'admin@esp.mr',
- '$2a$10$ANKAVXgt/vwpRbhPSNNL0u1QgwgS21A6.auM2JgM7ASjZMJpJ.eS6',
- 'ADMIN', NULL, NULL);
+ '$2b$12$d8b2sMl.KPzBKgf.xAAYGOyUPEmOwwzw7oFv02g/jDVsA2qT8hY3q',
+ 'SUPER_ADMIN', NULL, NULL, NULL, false);
 
 SELECT setval('utilisateur_id_seq', (SELECT MAX(id) FROM utilisateur));

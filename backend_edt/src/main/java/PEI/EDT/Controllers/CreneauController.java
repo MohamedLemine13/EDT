@@ -41,9 +41,27 @@ public class CreneauController {
         return creneauService.update(id, dto);
     }
 
+    /**
+     * Bulk update créneau types (for Excel-like drag-select).
+     * PUT /api/creneaux/bulk-type
+     */
+    @PutMapping("/bulk-type")
+    public List<CreneauDto> bulkUpdateType(@RequestBody BulkTypeUpdateRequest req) {
+        return creneauService.bulkUpdateType(req.getCreneauIds(), req.getTypeCreneau());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Integer id) {
         creneauService.delete(id);
+    }
+
+    @lombok.Getter
+    @lombok.Setter
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class BulkTypeUpdateRequest {
+        private List<Integer> creneauIds;
+        private String typeCreneau;
     }
 }

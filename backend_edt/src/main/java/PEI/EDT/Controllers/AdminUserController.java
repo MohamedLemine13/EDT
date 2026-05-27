@@ -3,6 +3,7 @@ package PEI.EDT.Controllers;
 import PEI.EDT.Dtos.Auth.CreateUserRequest;
 import PEI.EDT.Dtos.Auth.UserDto;
 import PEI.EDT.Entities.Departement;
+import PEI.EDT.Entities.Ecole;
 import PEI.EDT.Entities.Professeur;
 import PEI.EDT.Entities.Utilisateur;
 import PEI.EDT.Entities.Enums.RoleUtilisateur;
@@ -10,6 +11,7 @@ import PEI.EDT.Exceptions.BadRequestException;
 import PEI.EDT.Exceptions.ForbiddenException;
 import PEI.EDT.Exceptions.ResourceNotFoundException;
 import PEI.EDT.Repositories.DepartementRepository;
+import PEI.EDT.Repositories.EcoleRepository;
 import PEI.EDT.Repositories.ProfesseurRepository;
 import PEI.EDT.Repositories.UtilisateurRepository;
 import PEI.EDT.Security.CurrentUserService;
@@ -28,17 +30,19 @@ public class AdminUserController {
     private final UtilisateurRepository userRepo;
     private final DepartementRepository departementRepo;
     private final ProfesseurRepository professeurRepo;
+    private final EcoleRepository ecoleRepo;
     private final PasswordEncoder encoder;
     private final CurrentUserService currentUserService;
 
     /**
-     * Admin-only: create a new user account.
-     * The user will be required to change their password on first login.
+     * Create a new user account.
+     * - SUPER_ADMIN can create ADMIN users (must specify ecoleId)
+     * - ADMIN can create CHEF_DEP, CHEF_HE, CHEF_ST, PROFESSEUR, ETUDIANT (scoped to their school)
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserDto createUser(@RequestBody CreateUserRequest req) {
-        assertAdmin();
+        Utilisateur current = assertAdminOrSuperAdmin();
 
         if (req.getEmail() == null || req.getEmail().isBlank()) throw new BadRequestException("email is required");
         if (req.getPassword() == null || req.getPassword().isBlank()) throw new BadRequestException("password is required");
@@ -55,6 +59,31 @@ public class AdminUserController {
             role = RoleUtilisateur.valueOf(req.getRole().trim().toUpperCase());
         } catch (Exception e) {
             throw new BadRequestException("Rôle invalide: " + req.getRole());
+        }
+
+        // Permission checks based on current user's role
+        boolean isSuperAdmin = current.getRole() == RoleUtilisateur.SUPER_ADMIN;
+
+        if (role == RoleUtilisateur.SUPER_ADMIN) {
+            throw new BadRequestException("Impossible de créer un autre SUPER_ADMIN.");
+        }
+
+        if (role == RoleUtilisateur.ADMIN && !isSuperAdmin) {
+            throw new ForbiddenException("Seul un SUPER_ADMIN peut créer un ADMIN.");
+        }
+
+        if (!isSuperAdmin && current.getRole() != RoleUtilisateur.ADMIN) {
+            throw new ForbiddenException("Seul un ADMIN ou SUPER_ADMIN peut créer des utilisateurs.");
+        }
+
+        // Ecole link for ADMIN role
+        Ecole ecole = null;
+        if (role == RoleUtilisateur.ADMIN) {
+            if (req.getEcoleId() == null || req.getEcoleId().isBlank()) {
+                throw new BadRequestException("ecoleId est requis pour le rôle ADMIN.");
+            }
+            ecole = ecoleRepo.findById(req.getEcoleId())
+                    .orElseThrow(() -> new BadRequestException("École non trouvée: " + req.getEcoleId()));
         }
 
         // Departement required for ETUDIANT and CHEF_DEP
@@ -80,6 +109,7 @@ public class AdminUserController {
                 .email(req.getEmail().trim().toLowerCase())
                 .password(encoder.encode(req.getPassword()))
                 .role(role)
+                .ecole(ecole)
                 .departement(dep)
                 .professeur(prof)
                 .mustChangePassword(true)
@@ -90,41 +120,59 @@ public class AdminUserController {
     }
 
     /**
-     * Admin-only: list all users.
+     * List users.
+     * - SUPER_ADMIN sees all users
+     * - ADMIN sees only users in their school (no other SUPER_ADMIN/ADMIN)
      */
     @GetMapping
     public List<UserDto> listUsers() {
-        assertAdmin();
+        Utilisateur current = assertAdminOrSuperAdmin();
+
+        if (current.getRole() == RoleUtilisateur.SUPER_ADMIN) {
+            return userRepo.findAll().stream()
+                    .map(this::toDto)
+                    .toList();
+        }
+
+        // ADMIN: show all users (scoped by role - they see all non-SUPER_ADMIN users for now)
         return userRepo.findAll().stream()
+                .filter(u -> u.getRole() != RoleUtilisateur.SUPER_ADMIN)
                 .map(this::toDto)
                 .toList();
     }
 
     /**
-     * Admin-only: delete a user.
+     * Delete a user.
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUser(@PathVariable Integer id) {
-        assertAdmin();
+        Utilisateur current = assertAdminOrSuperAdmin();
 
         Utilisateur target = userRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + id));
 
-        // Prevent admin from deleting themselves
-        Utilisateur current = currentUserService.getCurrentUser();
+        // Prevent deleting yourself
         if (current.getId().equals(target.getId())) {
             throw new BadRequestException("Vous ne pouvez pas supprimer votre propre compte.");
+        }
+
+        // ADMIN cannot delete SUPER_ADMIN or other ADMIN
+        if (current.getRole() == RoleUtilisateur.ADMIN) {
+            if (target.getRole() == RoleUtilisateur.SUPER_ADMIN || target.getRole() == RoleUtilisateur.ADMIN) {
+                throw new ForbiddenException("Un ADMIN ne peut pas supprimer un SUPER_ADMIN ou un autre ADMIN.");
+            }
         }
 
         userRepo.delete(target);
     }
 
-    private void assertAdmin() {
+    private Utilisateur assertAdminOrSuperAdmin() {
         Utilisateur current = currentUserService.getCurrentUser();
-        if (current.getRole() != RoleUtilisateur.ADMIN) {
-            throw new ForbiddenException("Seul un ADMIN peut gérer les utilisateurs.");
+        if (current.getRole() != RoleUtilisateur.ADMIN && current.getRole() != RoleUtilisateur.SUPER_ADMIN) {
+            throw new ForbiddenException("Seul un ADMIN ou SUPER_ADMIN peut gérer les utilisateurs.");
         }
+        return current;
     }
 
     private UserDto toDto(Utilisateur u) {
@@ -135,6 +183,7 @@ public class AdminUserController {
                 .email(u.getEmail())
                 .role(u.getRole().name())
                 .departementId(u.getDepartement() == null ? null : u.getDepartement().getId())
+                .ecoleId(u.getEcole() == null ? null : u.getEcole().getId())
                 .mustChangePassword(u.isMustChangePassword())
                 .build();
     }

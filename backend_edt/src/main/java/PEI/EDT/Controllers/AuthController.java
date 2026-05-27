@@ -56,6 +56,7 @@ public class AuthController {
                 .email(u.getEmail())
                 .role(u.getRole().name())
                 .departementId(u.getDepartement() == null ? null : u.getDepartement().getId())
+                .ecoleId(u.getEcole() == null ? null : u.getEcole().getId())
                 .mustChangePassword(u.isMustChangePassword())
                 .build();
     }
@@ -88,6 +89,7 @@ public class AuthController {
                 .email(u.getEmail())
                 .role(u.getRole().name())
                 .departementId(u.getDepartement() == null ? null : u.getDepartement().getId())
+                .ecoleId(u.getEcole() == null ? null : u.getEcole().getId())
                 .mustChangePassword(false)
                 .build();
     }

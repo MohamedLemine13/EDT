@@ -1,6 +1,7 @@
 package PEI.EDT.Entities.Enums;
 
 public enum RoleUtilisateur {
+    SUPER_ADMIN,
     ETUDIANT,
     PROFESSEUR,
     ADMIN,

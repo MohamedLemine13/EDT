@@ -3,7 +3,7 @@
  * Central data management with localStorage persistence for demo purposes
  */
 
-import { createContext, useContext, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
 // Import types from central types file
 import type {

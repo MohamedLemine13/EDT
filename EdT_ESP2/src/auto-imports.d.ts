@@ -82,7 +82,4 @@ declare global {
   // @ts-ignore
   export type { Course, Teacher, Room, Session, WeekSchedule } from './hooks/useDataStore'
   import('./hooks/useDataStore')
-  // @ts-ignore
-  export type { Ecole, Departement, Professeur, Salle } from './hooks/useSetupContext'
-  import('./hooks/useSetupContext')
 }

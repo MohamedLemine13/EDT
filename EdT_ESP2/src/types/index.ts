@@ -345,7 +345,7 @@ export interface EdtResponse {
 // Auth Types (Spring Boot DTOs)
 // ==========================================
 
-export type UserRole = "ADMIN" | "ETUDIANT" | "PROFESSEUR" | "CHEF_DEP" | "CHEF_HE" | "CHEF_ST";
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "ETUDIANT" | "PROFESSEUR" | "CHEF_DEP" | "CHEF_HE" | "CHEF_ST";
 
 export interface LoginRequest {
   email: string;
@@ -364,6 +364,7 @@ export interface UserDto {
   email: string;
   role: string;
   departementId?: number;
+  ecoleId?: string;
   mustChangePassword: boolean;
 }
 
@@ -375,6 +376,28 @@ export interface CreateUserRequest {
   role: UserRole;
   departementId?: number;
   professeurId?: number;
+  ecoleId?: string;
+}
+
+// ==========================================
+// Super Admin DTOs
+// ==========================================
+
+export interface CreateSchoolWithAdminDto {
+  ecole: CreateEcoleDto;
+  admin: {
+    nom: string;
+    prenom: string;
+    email: string;
+    password: string;
+  };
+}
+
+export interface SchoolWithAdminDto {
+  ecole: EcoleDto;
+  admin: UserDto | null;
+  departementCount: number;
+  departements: DepartementDto[];
 }
 
 // ==========================================

@@ -38,9 +38,9 @@ export function Header({
   showWeekNav = false,
 }: HeaderProps) {
   const [, setDepartments] = useState<DeptOption[]>([])
-  const [semesters, setSemesters] = useState<SemOption[]>([])
+  const [, setSemesters] = useState<SemOption[]>([])
 
-  // Load departments and semesters from API
+  // Load departments from API
   useEffect(() => {
     departementService.getAll()
       .then((data) => {
@@ -65,9 +65,7 @@ export function Header({
 
 
 
-  const currentSem = semesters.find(s => s.libelle === semester)
-  const startYear = currentSem?.dateDebut ? new Date(currentSem.dateDebut).getFullYear() : new Date().getFullYear()
-  const academicYear = `${startYear}-${startYear + 1}`
+
 
   return (
     <header className="sticky top-1 mx-2 sm:mx-4 lg:mx-6 z-30 backdrop-blur-xl bg-background/85 border border-border/40 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.18)]">
@@ -94,15 +92,7 @@ export function Header({
             </div>
           </div>
 
-          {/* Academic Context Display */}
-          <div className="hidden sm:flex flex-col items-end justify-center ml-auto mr-4">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Année Universitaire
-            </span>
-            <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full mt-1">
-              {academicYear} • {semester}
-            </span>
-          </div>
+          {/* Academic Context Display removed to fix inaccurate year issues */}
 
           {/* Selectors with elegant styling */}
           <div className="flex items-center gap-2 sm:gap-3">

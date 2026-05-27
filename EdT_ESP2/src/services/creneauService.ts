@@ -33,6 +33,12 @@ export const creneauService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`${CRENEAUX_BASE}/${id}`);
   },
+
+  // Bulk update créneau types (for Excel-like drag-select)
+  bulkUpdateType: async (creneauIds: number[], typeCreneau: string): Promise<CreneauDto[]> => {
+    const response = await api.put<CreneauDto[]>(`${CRENEAUX_BASE}/bulk-type`, { creneauIds, typeCreneau });
+    return response.data;
+  },
 };
 
 export default creneauService;

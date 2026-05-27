@@ -21,12 +21,12 @@ const PUBLIC_ROUTES = ["/login"];
 // Routes allowed even when mustChangePassword is true
 const CHANGE_PASSWORD_ROUTE = "/change-password";
 
-// Role → default landing page
 const ROLE_LANDING: Record<string, string> = {
-  ADMIN: "/setup",
-  CHEF_DEP: "/setup",
-  CHEF_HE: "/setup",
-  CHEF_ST: "/setup",
+  SUPER_ADMIN: "/super-admin",
+  ADMIN: "/",
+  CHEF_DEP: "/",
+  CHEF_HE: "/",
+  CHEF_ST: "/",
   ETUDIANT: "/etudiant/emploi-du-temps",
   PROFESSEUR: "/professeur/emploi-du-temps",
 };

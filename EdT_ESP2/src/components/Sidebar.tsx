@@ -5,7 +5,6 @@ import {
   LayoutGrid,
   Clock,
   BarChart3,
-  Settings,
   GraduationCap,
   UserCircle,
   Users,
@@ -14,13 +13,19 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 
 const adminModules = [
-  { title: "Configuration", to: "/setup", icon: Settings },
-  { title: "Base de Données", to: "/bdd", icon: BookOpen },
-  { title: "Utilisateurs", to: "/utilisateurs", icon: Users, adminOnly: true },
-  { title: "Emploi du Temps", to: "/", icon: Clock },
+  { title: "Tableau de bord", to: "/", icon: LayoutGrid },
+  { title: "Utilisateurs", to: "/utilisateurs", icon: Users },
+  { title: "Emploi du Temps", to: "/emplois", icon: Clock },
   { title: "Calendrier", to: "/calendrier", icon: Calendar },
   { title: "Plan", to: "/plan", icon: LayoutGrid },
+];
+
+const chefModules = [
+  { title: "Base de Données", to: "/bdd", icon: BookOpen },
+  { title: "Emploi du Temps", to: "/emplois", icon: Clock },
+  { title: "Plan", to: "/plan", icon: LayoutGrid },
   { title: "Bilan", to: "/bilan", icon: BarChart3 },
+  { title: "Calendrier", to: "/calendrier", icon: Calendar },
 ];
 
 const professeurModules = [
@@ -44,7 +49,8 @@ export default function Sidebar() {
   const role = user?.role;
 
   // Determine which sections to show based on role
-  const isAdmin = role === "ADMIN" || role === "CHEF_DEP" || role === "CHEF_HE" || role === "CHEF_ST";
+  const isAdmin = role === "ADMIN";
+  const isChef = role === "CHEF_DEP" || role === "CHEF_HE" || role === "CHEF_ST";
   const isProfesseur = role === "PROFESSEUR";
   const isEtudiant = role === "ETUDIANT";
 
@@ -60,26 +66,51 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 overflow-y-auto space-y-6">
-        {/* Admin Menu — visible to ADMIN and chef roles */}
+        {/* Admin Menu — visible to ADMIN */}
         {isAdmin && (
           <div>
             <p className="text-sm font-semibold text-muted-foreground uppercase mb-3 px-2">
-              Menu
+              Menu Administration
             </p>
             <ul className="space-y-1">
-              {adminModules
-                .filter((m) => !(m as { adminOnly?: boolean }).adminOnly || role === "ADMIN")
-                .map(({ title, to, icon: Icon }) => {
+              {adminModules.map(({ title, to, icon: Icon }) => {
                 const active = isActive(to);
                 return (
                   <li key={to}>
                     <Link
                       to={to}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition text-base ${
-                        active
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition text-base ${active
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "text-foreground hover:bg-muted"
-                      }`}
+                        }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* Chef Menu — visible to CHEF_DEP, CHEF_HE, CHEF_ST */}
+        {isChef && (
+          <div>
+            <p className="text-sm font-semibold text-muted-foreground uppercase mb-3 px-2">
+              Menu Chef
+            </p>
+            <ul className="space-y-1">
+              {chefModules.map(({ title, to, icon: Icon }) => {
+                const active = isActive(to);
+                return (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition text-base ${active
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "text-foreground hover:bg-muted"
+                        }`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{title}</span>
@@ -105,11 +136,10 @@ export default function Sidebar() {
                   <li key={to}>
                     <Link
                       to={to}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-base ${
-                        active
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-base ${active
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "text-foreground hover:bg-muted"
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{title}</span>
@@ -135,11 +165,10 @@ export default function Sidebar() {
                   <li key={to}>
                     <Link
                       to={to}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-base ${
-                        active
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-base ${active
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "text-foreground hover:bg-muted"
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{title}</span>

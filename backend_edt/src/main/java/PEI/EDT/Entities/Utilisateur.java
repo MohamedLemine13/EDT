@@ -38,6 +38,10 @@ public class Utilisateur {
     private boolean mustChangePassword = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ecole_id") // nullable — only for ADMIN role
+    private Ecole ecole;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "departement_id") // nullable
     private Departement departement;
 
