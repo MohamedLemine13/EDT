@@ -1,0 +1,127 @@
+{
+  "department": "IRT",
+  "departmentName": "Informatique Réseaux & Télécommunication",
+  "semester": "S3",
+  "courses": [
+    {
+      "code": "IRT31",
+      "title": "Développement JEE",
+      "credits": 3,
+      "coefficient": 3,
+      "hours": { "cm": 6, "td": 6, "tp": 12, "total": 24 },
+      "teachers": { "cm": "Abderrahmane", "td": "Abderrahmane", "tp": "Abderrahmane" },
+      "rooms": { "cm": "104", "td": "104", "tp": "Labo IRT" },
+      "color": "#1565C0"
+    },
+    {
+      "code": "IRT32",
+      "title": "Intelligence artificielle",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "Hafedh", "td": "Hafedh", "tp": "Hafedh" },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#7B1FA2"
+    },
+    {
+      "code": "IRT33",
+      "title": "Théorie des langages et compilation",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "Hafedh", "td": "Hafedh", "tp": "Hafedh" },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#00838F"
+    },
+    {
+      "code": "IRT34",
+      "title": "Communications numériques",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "El Aoun", "td": "El Aoun", "tp": "Moktar/Limam" },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#F57C00"
+    },
+    {
+      "code": "IRT35",
+      "title": "Architecture des ordinateurs",
+      "credits": 3,
+      "coefficient": 3,
+      "hours": { "cm": 8, "td": 8, "tp": 8, "total": 24 },
+      "teachers": { "cm": "Sass", "td": "Sass", "tp": "Sass" },
+      "rooms": { "cm": "104", "td": "104", "tp": "Lab électronique" },
+      "color": "#C62828"
+    },
+    {
+      "code": "IRT36",
+      "title": "Réseaux mobiles",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "Moktar", "td": "Moktar", "tp": "Moktar" },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#2E7D32"
+    },
+    {
+      "code": "IRT37",
+      "title": "Réseaux d'opérateurs",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "El Aoun", "td": "El Aoun", "tp": "El Aoun" },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#5D4037"
+    },
+    {
+      "code": "IRT38",
+      "title": "IoT",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 5, "td": 5, "tp": 6, "total": 16 },
+      "teachers": { "cm": "Elhacen", "td": "Elhacen", "tp": "Helmi/Mayara" },
+      "rooms": { "cm": "104", "td": "104", "tp": "En ligne" },
+      "color": "#0097A7"
+    },
+    {
+      "code": "HE31",
+      "title": "Anglais",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 0, "td": 4, "tp": 0, "total": 4 },
+      "teachers": { "cm": "", "td": "Blake", "tp": "" },
+      "rooms": { "cm": "", "td": "101-106", "tp": "" },
+      "color": "#607D8B"
+    },
+    {
+      "code": "HE33",
+      "title": "Sociologie-Gestion",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 4, "td": 0, "tp": 0, "total": 4 },
+      "teachers": { "cm": "LAM", "td": "", "tp": "" },
+      "rooms": { "cm": "Amphi", "td": "", "tp": "" },
+      "color": "#78909C"
+    },
+    {
+      "code": "HE34",
+      "title": "Gestion",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 0, "td": 0, "tp": 0, "total": 0 },
+      "teachers": { "cm": "GEstion", "td": "", "tp": "" },
+      "rooms": { "cm": "Youba", "td": "", "tp": "" },
+      "color": "#90A4AE"
+    },
+    {
+      "code": "PIE",
+      "title": "Projet Industriel en Entreprise",
+      "credits": 2,
+      "coefficient": 2,
+      "hours": { "cm": 2, "td": 24, "tp": 48, "total": 74 },
+      "teachers": { "cm": "Enseignants du dpt.", "td": "Enseignants du dpt.", "tp": "Enseignants du dpt." },
+      "rooms": { "cm": "104", "td": "104", "tp": "104" },
+      "color": "#4527A0"
+    }
+  ]
+}

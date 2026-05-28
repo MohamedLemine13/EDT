@@ -1,0 +1,16 @@
+package PEI.EDT.Dtos;
+
+import lombok.*;
+
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
+public class CreateMatiereDto {
+    private String code;
+    private String intitule;
+    private Integer credits;
+    private Integer hCm;
+    private Integer hTd;
+    private Integer hTp;
+    private String typeMatiere;
+}

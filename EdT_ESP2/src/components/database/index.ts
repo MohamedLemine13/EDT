@@ -1,0 +1,8 @@
+export { SearchBar } from './SearchBar'
+export { CoursesTable } from './CoursesTable'
+export { TeachersTable } from './TeachersTable'
+export { RoomsTable } from './RoomsTable'
+export { DetailPanel } from './DetailPanel'
+export { CourseForm } from './CourseForm'
+export { TeacherForm } from './TeacherForm'
+export { RoomForm } from './RoomForm'

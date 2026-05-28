@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {}
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"],
+      "env": {}
+    },
+    "kibo-ui": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://www.kibo-ui.com/api/mcp/mcp"]
+    },
+    "ai-elements": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://registry.ai-sdk.dev/api/mcp"]
+    },
+    "magic": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/21st-mcp@latest"],
+      "env": {}
+    },
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {}
+    },
+    "exa": {
+      "command": "npx",
+      "args": ["-y", "exa-mcp"],
+      "env": {}
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/brave-search-mcp@latest"],
+      "env": {}
+    }
+  }
+}
